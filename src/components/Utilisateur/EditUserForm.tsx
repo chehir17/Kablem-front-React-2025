@@ -5,6 +5,11 @@ import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
 import FileInput from "../form/input/FileInput";
+import swal from "sweetalert";
+import { DepartementService } from "../../services/DepartementService";
+import { Departement } from "../../types/Departement";
+import { AutoPassword, EyeCloseIcon, EyeIcon } from "../../icons";
+import { handleGeneratePassword } from "../../utils/GenratePassword";
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -26,19 +31,38 @@ export default function EditUserModal({
         email: "",
         matricul: "",
         nature: "",
-        departement: "",
+        id_departement: "",
         statut: "",
-        image: "",
         zone: "",
+        password:"",
+        photo: null,
     });
 
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<any>({});
+    const [departementError, setDepartementError] = useState<any>({});
+    const [departements, setDepartements] = useState<Departement[]>([]);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (user) {
-            setFormData(user);
+            setFormData({
+                ...user,
+                photo: null,
+            });
         }
+        const fetchDepartements = async () => {
+            try {
+                const data = await DepartementService.getDepartements();
+                setDepartements(data);
+            } catch (err) {
+                setDepartementError("Impossible de charger les départements.");
+                console.log(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDepartements();
     }, [user]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,61 +73,70 @@ export default function EditUserModal({
         setFormData({ ...formData, [field]: value });
     };
 
-    const validateForm = () => {
-        let newErrors: any = {};
-
-        if (!formData.first_name) newErrors.first_name = "Le nom est requis";
-        if (!formData.last_name) newErrors.last_name = "Le prénom est requis";
-        if (!formData.email) {
-            newErrors.email = "L'email est requis";
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = "Format email invalide";
-        }
-        if (!formData.matricul) newErrors.matricul = "Le matricule est requis";
-        if (!formData.nature) newErrors.nature = "La nature est requise";
-        if (!formData.departement) newErrors.departement = "Le département est requis";
-        if (!formData.zone) newErrors.zone = "La zone est requise";
-        if (!formData.statut) newErrors.statut = "Le statut est requis";
-        if (!formData.file) newErrors.file = "Le fichier est requis";
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             if (!file.type.startsWith("image/")) {
-                setErrors({ ...errors, file: "Le fichier doit être une image." });
+                setErrors({ ...errors, photo: "Le fichier doit être une image." });
                 return;
             }
-            if (file.size > 2 * 1024 * 1024) { // max 2Mo
-                setErrors({ ...errors, file: "La taille du fichier doit être inférieure à 2 Mo." });
+            if (file.size > 2 * 1024 * 1024) {
+                setErrors({
+                    ...errors,
+                    photo: "La taille du fichier doit être inférieure à 2 Mo.",
+                });
                 return;
             }
-            setFormData({ ...formData, file });
-            setErrors({ ...errors, file: "" });
+            setFormData({ ...formData, photo: file });
+            setErrors({ ...errors, photo: "" });
         }
+    };
+
+    const validateForm = () => {
+        let newErrors: any = {};
+        if (!formData.first_name) newErrors.first_name = "Le nom est requis";
+        if (!formData.last_name) newErrors.last_name = "Le prénom est requis";
+        if (!formData.email) newErrors.email = "L'email est requis";
+        if (!formData.matricul) newErrors.matricul = "Le matricule est requis";
+        if (!formData.nature) newErrors.nature = "La nature est requise";
+        if (!formData.zone) newErrors.zone = "La zone est requise";
+        if (!formData.statut) newErrors.statut = "Le statut est requis";
+        if (!formData.id_departement)
+            newErrors.id_departement = "Le département est requis";
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
         if (!validateForm()) return;
         setLoading(true);
         try {
-            const updatedUser = await UserService.update(formData.id, formData);
-            onClose();
+            const dataToSend = new FormData();
+            dataToSend.append("first_name", formData.first_name);
+            dataToSend.append("last_name", formData.last_name);
+            dataToSend.append("email", formData.email);
+            dataToSend.append("matricul", formData.matricul);
+            dataToSend.append("nature", formData.nature);
+            dataToSend.append("statut", formData.statut);
+            dataToSend.append("id_departement", formData.id_departement);
+            dataToSend.append("zone", formData.zone);
+            if (formData.photo) {
+                dataToSend.append("photo", formData.photo);
+            }
+
+            const updatedUser = await UserService.update(formData.id, dataToSend);
             swal({
-                title: "Succès!",
-                text: "Utilisateur mis à jour avec succès.",
-                icon: "update",
+                title: "Succès",
+                text: "Utilisateur mis à jour avec succès",
+                icon: "success",
             });
             onSave(updatedUser);
+            onClose();
         } catch (error) {
-            console.error("Erreur maj user :", error);
+            console.error("Erreur mise à jour utilisateur :", error);
             swal({
-                title: "Erreur!",
-                text: "Erreur lors de la mise à jour de l'utilisateur.",
+                title: "Erreur",
+                text: "Échec de la mise à jour de l'utilisateur",
                 icon: "error",
             });
         } finally {
@@ -127,9 +160,11 @@ export default function EditUserModal({
                             name="first_name"
                             value={formData.first_name}
                             onChange={handleChange}
-                            error={!!errors.first_name} success={!!formData.first_name}
+                            error={!!errors.first_name}
                         />
-                        {errors.first_name && <p className="text-red-500 text-sm">{errors.first_name}</p>}
+                        {errors.first_name && (
+                            <p className="text-red-500 text-sm">{errors.first_name}</p>
+                        )}
                     </div>
                     <div>
                         <Label htmlFor="last_name">Prénom</Label>
@@ -139,10 +174,13 @@ export default function EditUserModal({
                             name="last_name"
                             value={formData.last_name}
                             onChange={handleChange}
-                            error={!!errors.last_name} success={!!formData.last_name}
+                            error={!!errors.last_name}
                         />
-                        {errors.last_name && <p className="text-red-500 text-sm">{errors.last_name}</p>}
+                        {errors.last_name && (
+                            <p className="text-red-500 text-sm">{errors.last_name}</p>
+                        )}
                     </div>
+
                     <div>
                         <Label>Email</Label>
                         <Input
@@ -151,10 +189,13 @@ export default function EditUserModal({
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            error={!!errors.email} success={!!formData.email}
+                            error={!!errors.email}
                         />
-                        {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+                        {errors.email && (
+                            <p className="text-red-500 text-sm">{errors.email}</p>
+                        )}
                     </div>
+
                     <div>
                         <Label>Matricule</Label>
                         <Input
@@ -163,9 +204,11 @@ export default function EditUserModal({
                             name="matricul"
                             value={formData.matricul}
                             onChange={handleChange}
-                            error={!!errors.matricul} success={!!formData.matricul}
+                            error={!!errors.matricul}
                         />
-                        {errors.matricul && <p className="text-red-500 text-sm">{errors.matricul}</p>}
+                        {errors.matricul && (
+                            <p className="text-red-500 text-sm">{errors.matricul}</p>
+                        )}
                     </div>
 
                     <div>
@@ -176,22 +219,26 @@ export default function EditUserModal({
                             name="nature"
                             value={formData.nature}
                             onChange={handleChange}
-                            error={!!errors.nature} success={!!formData.nature}
+                            error={!!errors.nature}
                         />
-                        {errors.nature && <p className="text-red-500 text-sm">{errors.nature}</p>}
+                        {errors.nature && (
+                            <p className="text-red-500 text-sm">{errors.nature}</p>
+                        )}
                     </div>
 
                     <div>
                         <Label>Département</Label>
                         <Select
-                            options={[
-                                { value: "qualité", label: "Qualité" },
-                                { value: "dep_extrusion", label: "Département extrusion" },
-                            ]}
+                            options={departements.length > 0
+                                ? departements.map(dep => ({ value: String(dep.id_departement), label: dep.nom_departement }))
+                                : [{ value: "", label: "Aucun département disponible" }]
+                            }
+                            placeholder={loading ? "Chargement..." : "Sélectionner"}
                             onChange={(val) => handleSelectChange(val, "departement")}
-                            value={formData.departement}
                         />
-                        {errors.departement && <p className="text-red-500 text-sm">{errors.departement}</p>}
+                        {errors.id_departement && (
+                            <p className="text-red-500 text-sm">{errors.id_departement}</p>
+                        )}
                     </div>
 
                     <div>
@@ -204,7 +251,9 @@ export default function EditUserModal({
                             onChange={(val) => handleSelectChange(val, "zone")}
                             value={formData.zone}
                         />
-                        {errors.zone && <p className="text-red-500 text-sm">{errors.zone}</p>}
+                        {errors.zone && (
+                            <p className="text-red-500 text-sm">{errors.zone}</p>
+                        )}
                     </div>
 
                     <div>
@@ -217,13 +266,83 @@ export default function EditUserModal({
                             onChange={(val) => handleSelectChange(val, "statut")}
                             value={formData.statut}
                         />
-                        {errors.statut && <p className="text-red-500 text-sm">{errors.statut}</p>}
+                        {errors.statut && (
+                            <p className="text-red-500 text-sm">{errors.statut}</p>
+                        )}
+                    </div>
+                    <div>
+                        <Label>
+                            Mot de passe <span className="text-error-500">*</span>
+                        </Label>
+
+                        <div className="relative">
+                            {/* Input avec padding à droite pour laisser place aux icônes */}
+                            <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Entrez votre mot de passe"
+                                value={formData.password || ""}
+                                onChange={handleChange}
+                                error={!!errors.password}
+                                success={!!formData.password}
+                                name="password"
+                                id="password"
+                                className="pr-20" // espace pour icônes
+                            />
+
+                            {/* Container des icônes */}
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {/* Icône afficher/masquer */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="p-1"
+                                >
+                                    {showPassword ? (
+                                        <EyeIcon className="size-5 fill-gray-500" />
+                                    ) : (
+                                        <EyeCloseIcon className="size-5 fill-gray-500" />
+                                    )}
+                                </button>
+
+                                {/* Icône génération mot de passe */}
+                                <button
+                                    type="button"
+                                    onClick={() => handleGeneratePassword(formData, setFormData)}
+                                    className="p-1"
+                                >
+                                    <AutoPassword className="size-5 fill-green-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Message d’erreur */}
+                        {errors.password && (
+                            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                        )}
+                    </div>
+                    <div>
+                        <Label>Confirme mot de passe</Label>
+                        <Input
+                            placeholder="Confirme mot de passe"
+                            type="password"
+                            value={formData.confPassword || ""}
+                            onChange={handleChange}
+                            error={!!errors.confPassword}
+                            success={!!formData.confPassword}
+                            name="confPassword"
+                            id="confPassword"
+                        />
+                        {errors.confPassword && (
+                            <p className="text-red-500 text-sm">{errors.confPassword}</p>
+                        )}
                     </div>
 
                     <div className="col-span-2">
                         <Label>Upload Image</Label>
                         <FileInput onChange={handleFileChange} />
-                        {errors.file && <p className="text-red-500 text-sm">{errors.file}</p>}
+                        {errors.photo && (
+                            <p className="text-red-500 text-sm">{errors.photo}</p>
+                        )}
                     </div>
                 </form>
 

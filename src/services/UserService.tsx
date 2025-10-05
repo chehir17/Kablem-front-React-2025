@@ -1,33 +1,43 @@
 import axios from "axios";
+import { Utilisateur } from "../types/Utilisateur"
 
 const api = axios.create({
-    baseURL: "http://localhost:5000/api",
-    headers: {
-        "Content-Type": "application/json",
-    },
+  baseURL: "http://localhost/platforme_KablemSPA_backEnd/public/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Ajouter un middleware pour inclure un token d'authentification (JWT)
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 
 export const UserService = {
 
-    getAll: () => api.get("/users"),
+  async getUsers(): Promise<Utilisateur[]> {
+    const response = await api.get("/user");
+    return response.data;
+  },
 
-    getById: (id: any) => api.get(`/users/${id}`),
+  getById: (id: any) => api.get(`/user/${id}`),
 
-    create: (data: any) => api.post("/users", data),
+  create: async (data: FormData) => {
+    return api.post("/user", data,{
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
 
-   async update(id: number, data: any) {
+  async update(id: number, data: any) {
     try {
-      const response = await api.put(`/users/${id}`, data);
+      const response = await api.put(`/user/${id}`, data);
       return response.data;
     } catch (error) {
       console.error("Erreur lors de la mise à jour :", error);
@@ -35,5 +45,5 @@ export const UserService = {
     }
   },
 
-    delete: (id: any) => api.delete(`/users/${id}`),
+  delete: (id: any) => api.delete(`/user/${id}`),
 };

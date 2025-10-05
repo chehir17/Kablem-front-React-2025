@@ -33,12 +33,16 @@ type DataTableLayoutProps<T> = {
   columns: TableColumn<T>[];
   data: T[];
   title?: string;
+  loading?: boolean;   // ajout
+  error?: string | null; // ajout
 };
 
 export default function DataTableLayout<T>({
   columns,
   data,
   title,
+  loading = false,
+  error = null,
 }: DataTableLayoutProps<T>) {
   const [filterText, setFilterText] = useState("");
   const { theme } = useTheme();
@@ -55,42 +59,56 @@ export default function DataTableLayout<T>({
         </h2>
       )}
 
-      {/* Search bar */}
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <input
-          type="text"
-          placeholder="Search..."
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
-        />
-
-        {/* Export buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => exportToCSV(filteredData, title || "table-data")}
-            className="px-3 py-2 text-sm text-white bg-green-500 rounded hover:bg-green-600"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={() => exportToExcel(filteredData, title || "table-data")}
-            className="px-3 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
-          >
-            Export Excel
-          </button>
+      {!loading && !error && (
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <input
+            type="text"
+            placeholder="Search..."
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => exportToCSV(filteredData, title || "table-data")}
+              className="px-3 py-2 text-sm text-white bg-green-500 rounded hover:bg-green-600"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={() => exportToExcel(filteredData, title || "table-data")}
+              className="px-3 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+            >
+              Export Excel
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <DataTable
-        key={theme}
-        columns={columns}
-        data={filteredData}
-        pagination
-        highlightOnHover
-        responsive
-        theme={theme === "dark" ? "darkCustom" : "light"}
-      />
+      {loading && (
+        <div className="flex justify-center items-center py-10">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-3">Chargement des données...</span>
+        </div>
+      )}
+
+      {/* Erreur */}
+      {error && (
+        <div className="text-red-500 font-semibold text-center py-10">{error}</div>
+      )}
+
+      {/* Tableau */}
+      {!loading && !error && (
+        <DataTable
+          key={theme}
+          columns={columns}
+          data={filteredData}
+          pagination
+          highlightOnHover
+          responsive
+          theme={theme === "dark" ? "darkCustom" : "light"}
+        />
+      )}
     </div>
   );
 }

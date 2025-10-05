@@ -7,12 +7,12 @@ interface EditUserLevelRoleFormProps {
   isOpen: boolean;
   onClose: () => void;
   user: {
-    id: number;
+    id_user: number;
     level: string;
     role: string;
   } | null;
   onSave: (updatedUser: {
-    id: number;
+    id_user: number;
     level: string;
     role: string;
   }) => void;
@@ -25,7 +25,7 @@ export default function EditUserLevelRoleForm({
   onSave,
 }: EditUserLevelRoleFormProps) {
   const [formData, setFormData] = useState({
-    id: 0,
+    id_user: 0,
     level: "",
     role: "",
   });

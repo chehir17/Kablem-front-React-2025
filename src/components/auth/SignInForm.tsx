@@ -1,14 +1,35 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
+import { login } from "../../services/authService";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const onSignInHandler = async (e: { preventDefault: () => void; }) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const result = await login(email, password);
+    setLoading(false);
+
+    if (result.success) {
+      navigate("/dashboard");
+    } else {
+      alert(result.message || "Échec de connexion");
+    }
+  };
+
+
   return (
     <div className="flex flex-col flex-1">
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
@@ -67,7 +88,10 @@ export default function SignInForm() {
                   <Label>
                     Email <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input placeholder="info@gmail.com" />
+                  <Input placeholder="info@gmail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div>
                   <Label>
@@ -77,6 +101,8 @@ export default function SignInForm() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Entrez votre mot de passe"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -106,11 +132,11 @@ export default function SignInForm() {
                 </div>
 
                 <div>
-                  <Link to="/dashboard">
-                    <Button className="w-full" size="sm">
-                      Se connecter
+                  {/* <Link to="/dashboard"> */}
+                    <Button onClick={() => onSignInHandler} className="w-full" size="sm" disabled={loading}>
+                      {loading ? "Connexion..." : "Se connecter"}
                     </Button>
-                  </Link>
+                  {/* </Link> */}
                 </div>
               </div>
             </form>

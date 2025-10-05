@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserService } from "../../services/UserService.tsx";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
@@ -9,16 +9,34 @@ import Select from "../form/Select.tsx";
 import GoBackButton from "../../utils/GoBack.tsx";
 import FileInput from "../form/input/FileInput.tsx";
 import swal from 'sweetalert';
+import { AutoPassword, EyeCloseIcon, EyeIcon } from "../../icons/index.ts";
+import emailjs, { EmailJSResponseStatus } from '@emailjs/browser';
+import { DepartementService } from "../../services/DepartementService.tsx";
+import { Departement } from "../../types/Departement.tsx";
+import { handleGeneratePassword } from "../../utils/GenratePassword.ts";
 
 export default function AddUserForm() {
     const [formData, setFormData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
+    const [departementError, setDepartementError] = useState<any>({});
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [departements, setDepartements] = useState<Departement[]>([]);
 
-    const optionsdep = [
-        { value: "qualite", label: "Qualité" },
-        { value: "informatique", label: "Informatique" },
-    ];
+    useEffect(() => {
+        const fetchDepartements = async () => {
+            try {
+                const data = await DepartementService.getDepartements();
+                setDepartements(data);
+            } catch (err) {
+                setDepartementError("Impossible de charger les départements.");
+                console.log(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDepartements();
+    }, []);
 
     const optionsZone = [
         { value: "zone A", label: "Zone A" },
@@ -35,7 +53,11 @@ export default function AddUserForm() {
         setErrors({ ...errors, [e.target.id]: "" });
     };
 
-    const handleSelectChange = (value: string, field: string) => {
+    const handleSelectChange = (
+        option: { value: string; label: string } | string,
+        field: string
+    ) => {
+        const value = typeof option === "string" ? option : option?.value;
         setFormData({ ...formData, [field]: value });
         setErrors({ ...errors, [field]: "" });
     };
@@ -56,11 +78,12 @@ export default function AddUserForm() {
         }
     };
 
+
     const validateForm = () => {
         let newErrors: any = {};
 
-        if (!formData.nom) newErrors.nom = "Le nom est requis";
-        if (!formData.prenom) newErrors.prenom = "Le prénom est requis";
+        if (!formData.first_name) newErrors.first_name = "Le nom est requis";
+        if (!formData.last_name) newErrors.last_name = "Le prénom est requis";
         if (!formData.email) {
             newErrors.email = "L'email est requis";
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -72,35 +95,84 @@ export default function AddUserForm() {
         if (!formData.zone) newErrors.zone = "La zone est requise";
         if (!formData.statut) newErrors.statut = "Le statut est requis";
         if (!formData.file) newErrors.file = "Le fichier est requis";
+        if (!formData.password) newErrors.password = "Le mot de passe est requis";
+        if (!formData.confPassword) newErrors.confPassword = "La confirmation du mot de passe est requise";
+        if (formData.password && formData.confPassword && formData.password !== formData.confPassword) {
+            newErrors.confPassword = "Les mots de passe ne correspondent pas";
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async () => {
-        if (!validateForm()) return
+    const handleSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!validateForm()) return;
 
         setLoading(true);
         try {
-            await UserService.create(formData);
+            // Création d’un FormData
+            const formDataToSend = new FormData();
+
+            // Ajouter tous les champs
+            // ✅ Mapping des champs attendus par Laravel
+            formDataToSend.append("first_name", formData.first_name || "");
+            formDataToSend.append("last_name", formData.last_name || "");
+            formDataToSend.append("email", formData.email || "");
+            formDataToSend.append("matricul", formData.matricul || "");
+            formDataToSend.append("nature", formData.nature || "");
+            formDataToSend.append("id_departement", formData.departement || "");
+            formDataToSend.append("zone", formData.zone || "");
+            formDataToSend.append("statut", formData.statut || "");
+            formDataToSend.append("password", formData.password || "");
+
+            if (formData.file) {
+                formDataToSend.append("photo", formData.file);
+            }
+
+            for (let [key, value] of formDataToSend.entries()) {
+                console.log(key, value);
+            }
+
+
+
+            const response = await UserService.create(formDataToSend);
+
+            console.log("Utilisateur créé :", response.data);
+
+            // // Email d’envoi
+            // await emailjs.send(
+            //     "Kablem_email_service",
+            //     "template_kablem",
+            //     {
+            //         to_email: formData.email,
+            //         first_name: formData.first_name,
+            //         last_name: formData.last_name,
+            //         password: formData.password,
+            //         email: formData.email,
+            //     },
+            //     "ytIgPKdJvOlJzFte5"
+            // );
+
             swal({
                 title: "Good job!",
-                text: "Le demande a été ajoutée, veuillez donner les droits d'accès pour cet utilisateur.",
+                text: "L'utilisateur a été ajouté avec succès.",
                 icon: "success",
-            }).then(function () {
+            }).then(() => {
                 window.location.href = "/utilisateurs";
             });
         } catch (err) {
             console.error(err);
             swal({
                 title: "Erreur!",
-                text: "Erreur lors de l'ajout de l'utilisateur.",
+                text: "Impossible d'ajouter l'utilisateur.",
                 icon: "error",
             });
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <div>
@@ -113,37 +185,42 @@ export default function AddUserForm() {
             <ComponentCard title="Ajouter un Utilisateur">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <Label htmlFor="nom">Nom</Label>
-                        <Input type="text" id="nom" onChange={handleChange} error={!!errors.nom} success={!!formData.nom} />
-                        {errors.nom && <p className="text-red-500 text-sm">{errors.nom}</p>}
+                        <Label htmlFor="first_name">Nom</Label>
+                        <Input type="text" id="first_name" name="first_name" onChange={handleChange} error={!!errors.first_name} success={!!formData.first_name} />
+                        {errors.first_name && <p className="text-red-500 text-sm">{errors.first_name}</p>}
                     </div>
                     <div>
-                        <Label htmlFor="prenom">Prénom</Label>
-                        <Input type="text" id="prenom" onChange={handleChange} error={!!errors.prenom} success={!!formData.prenom} />
-                        {errors.prenom && <p className="text-red-500 text-sm">{errors.prenom}</p>}
+                        <Label htmlFor="last_name">Prénom</Label>
+                        <Input type="text" id="last_name" name="last_name" onChange={handleChange} error={!!errors.last_name} success={!!formData.last_name} />
+                        {errors.last_name && <p className="text-red-500 text-sm">{errors.last_name}</p>}
                     </div>
                     <div>
                         <Label htmlFor="email">Email</Label>
-                        <Input type="email" id="email" onChange={handleChange} error={!!errors.email} success={!!formData.email} />
+                        <Input type="email" id="email" name="email" onChange={handleChange} error={!!errors.email} success={!!formData.email} />
                         {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
                     </div>
                     <div>
                         <Label htmlFor="matricul">Matricule</Label>
-                        <Input type="text" id="matricul" onChange={handleChange} error={!!errors.matricul} success={!!formData.matricul} />
+                        <Input type="text" id="matricul" name="matricul" onChange={handleChange} error={!!errors.matricul} success={!!formData.matricul} />
                         {errors.matricul && <p className="text-red-500 text-sm">{errors.matricul}</p>}
                     </div>
                     <div>
                         <Label htmlFor="nature">Nature</Label>
-                        <Input type="text" id="nature" onChange={handleChange} error={!!errors.nature} success={!!formData.nature} />
+                        <Input type="text" id="nature" name="nature" onChange={handleChange} error={!!errors.nature} success={!!formData.nature} />
                         {errors.nature && <p className="text-red-500 text-sm">{errors.nature}</p>}
                     </div>
                     <div>
                         <Label>Département</Label>
+
                         <Select
-                            options={optionsdep}
-                            placeholder="Select"
+                            options={departements.length > 0
+                                ? departements.map(dep => ({ value: String(dep.id_departement), label: dep.nom_departement }))
+                                : [{ value: "", label: "Aucun département disponible" }]
+                            }
+                            placeholder={loading ? "Chargement..." : "Sélectionner"}
                             onChange={(val) => handleSelectChange(val, "departement")}
                         />
+
                         {errors.departement && <p className="text-red-500 text-sm">{errors.departement}</p>}
                     </div>
                     <div>
@@ -164,8 +241,73 @@ export default function AddUserForm() {
                         />
                         {errors.statut && <p className="text-red-500 text-sm">{errors.statut}</p>}
                     </div>
-                </div>
+                    <div>
+                        <Label>
+                            Mot de passe <span className="text-error-500">*</span>
+                        </Label>
 
+                        <div className="relative">
+                            {/* Input avec padding à droite pour laisser place aux icônes */}
+                            <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Entrez votre mot de passe"
+                                value={formData.password || ""}
+                                onChange={handleChange}
+                                error={!!errors.password}
+                                success={!!formData.password}
+                                name="password"
+                                id="password"
+                                className="pr-20" // espace pour icônes
+                            />
+
+                            {/* Container des icônes */}
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {/* Icône afficher/masquer */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="p-1"
+                                >
+                                    {showPassword ? (
+                                        <EyeIcon className="size-5 fill-gray-500" />
+                                    ) : (
+                                        <EyeCloseIcon className="size-5 fill-gray-500" />
+                                    )}
+                                </button>
+
+                                {/* Icône génération mot de passe */}
+                                <button
+                                    type="button"
+                                    onClick={() => handleGeneratePassword(formData, setFormData)}
+                                    className="p-1"
+                                >
+                                    <AutoPassword className="size-5 fill-green-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Message d’erreur */}
+                        {errors.password && (
+                            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                        )}
+                    </div>
+                    <div>
+                        <Label>Confirme mot de passe</Label>
+                        <Input
+                            placeholder="Confirme mot de passe"
+                            type="password"
+                            value={formData.confPassword || ""}
+                            onChange={handleChange}
+                            error={!!errors.confPassword}
+                            success={!!formData.confPassword}
+                            name="confPassword"
+                            id="confPassword"
+                        />
+                        {errors.confPassword && (
+                            <p className="text-red-500 text-sm">{errors.confPassword}</p>
+                        )}
+                    </div>
+                </div>
                 <div>
                     <Label>Upload Image</Label>
                     <FileInput onChange={handleFileChange} />

@@ -1,4 +1,4 @@
-import { JSX, useState, } from "react";
+import { JSX, useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Badge from "../../components/ui/badge/Badge";
@@ -7,81 +7,12 @@ import { useNavigate } from "react-router";
 import EditUserModal from "../../components/Utilisateur/EditUserForm";
 import EditUserLevelRoleForm from "../../components/Utilisateur/EditUserLevelForm";
 import ActionMenu from "../../utils/ActionOption";
+import { Utilisateur } from "../../types/Utilisateur";
+import { UserService } from "../../services/UserService";
+import { DepartementService } from "../../services/DepartementService";
+import { Departement } from "../../types/Departement";
 
-
-interface Utilisateur {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    matricul: string;
-    nature: string,
-    departement: string,
-    role?: string,
-    level?: string,
-    statut: string,
-    image: string,
-    zone: string
-}
-
-const tableData: Utilisateur[] = [
-    {
-        id: 1,
-        first_name: "chehir",
-        last_name: "ben slim",
-        email: "benslimchehir@gmail.com",
-        matricul: "M123456",
-        nature: "Nature A",
-        departement: "qualite",
-        role: "Admin",
-        level: "High",
-        statut: "Actif",
-        image: "/images/user/owner.jpg",
-        zone: "zone A"
-    },
-    {
-        id: 2,
-        first_name: "Ahmed",
-        last_name: "Ben Ali",
-        email: "ahmed.benali@gmail.com",
-        matricul: "M654388",
-        nature: "Nature B",
-        departement: "qualite",
-        role: "qualite",
-        level: "Medium",
-        statut: "Inactif",
-        image: "/images/user/user2.jpg",
-        zone: "Zone B"
-    },
-    {
-        id: 3,
-        first_name: "Mohamed",
-        last_name: "Salem",
-        email: "mohamed.salem@gmail.com",
-        matricul: "M785",
-        nature: "Nature A",
-        departement: "qualite",
-        role: "qualite",
-        level: "Medium",
-        statut: "Actif",
-        image: "/images/user/user3.jpg",
-        zone: "Zone A"
-    },
-    {
-        id: 4,
-        first_name: "Louay",
-        last_name: "MAgouli",
-        email: "louay.magouli@gmail.com",
-        matricul: "M7899",
-        nature: "Nature C",
-        departement: "qualite",
-        role: "qualite",
-        level: "Medium",
-        statut: "Actif",
-        image: "/images/user/user4.jpg",
-        zone: "Zone B"
-    },
-];
+const tableData: Utilisateur[] = [];
 
 interface Column<T> {
     name: string;
@@ -90,18 +21,43 @@ interface Column<T> {
     cell?: (row: T) => JSX.Element;
 }
 
-
 export default function Utlisateurs() {
     const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>(tableData);
+    const [departements, setDepartements] = useState<Departement[]>([]);
     const [selectedUtilisateur, setSelectedUtilisateur] = useState<Utilisateur | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isModalUserOpen, setIsModalUserOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const users = await UserService.getUsers();
+                const depsResponse = await DepartementService.getDepartements(); // ✅ récupère tous les départements
+                setUtilisateurs(users);
+                setDepartements(depsResponse);
+            } catch (err) {
+                setError("Impossible de charger les utilisateurs ou les départements.");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Fonction utilitaire pour trouver le nom du département
+    const getDepartementName = (id: string | number) => {
+        const dep = departements.find((d) => d.id_departement === Number(id));
+        return dep ? dep.nom_departement : "N/A";
+    };
 
     const columns: Column<Utilisateur>[] = [
         {
-            name: "Nom & prenom ",
+            name: "Nom & prénom",
             selector: (row) => row.first_name,
             sortable: true,
             cell: (row) => (
@@ -110,8 +66,8 @@ export default function Utlisateurs() {
                         <img
                             width={40}
                             height={40}
-                            src={row.image}
-                            alt={row.image}
+                            src={`http://localhost/platforme_KablemSPA_backEnd/public/files/${row.photo}`}
+                            alt={row.photo}
                         />
                     </div>
                     <div>
@@ -125,34 +81,22 @@ export default function Utlisateurs() {
                 </div>
             ),
         },
+        { name: "Email", selector: (row) => row.email, sortable: true },
+        { name: "Matricul", selector: (row) => row.matricul, sortable: true },
+        { name: "Nature", selector: (row) => row.nature, sortable: true },
         {
-            name: "Email",
-            selector: (row) => row.email,
-            sortable: true,
-        },
-        {
-            name: "Matricul",
-            selector: (row) => row.matricul,
-            sortable: true,
-        },
-        {
-            name: "Nature",
-            selector: (row) => row.nature,
-            sortable: true,
-        },
-        {
-            name: "Departement",
-            selector: (row) => row.departement,
+            name: "Département",
+            selector: (row) => getDepartementName(row.id_departement),
             sortable: true,
         },
         {
             name: "Role",
-            selector: (row) => row.role ? row.role : "N/A",
+            selector: (row) => row.role ?? "N/A",
             sortable: true,
         },
         {
             name: "Level",
-            selector: (row) => row.level ? row.level : "N/A",
+            selector: (row) => row.level ?? "N/A",
             sortable: true,
         },
         {
@@ -162,7 +106,7 @@ export default function Utlisateurs() {
             cell: (row) => (
                 <Badge
                     color={
-                        row.statut === "Actif"
+                        row.statut === "actif"
                             ? "success"
                             : row.statut === "Inactif"
                                 ? "warning"
@@ -178,30 +122,20 @@ export default function Utlisateurs() {
             name: "Actions",
             cell: (row) => {
                 const options = [
-                    {
-                        label: "Modifier",
-                        onClick: () => handleEdit(row),
-                    },
-                    {
-                        label: "Supprimer",
-                        onClick: () => alert(`Supprimer fournisseur ID: ${row.id}`),
-                    },
-                    {
-                        label: "Modifier rôle & level",
-                        onClick: () => handleEditUserLevelForm(row),
-                    },
+                    { label: "Modifier", onClick: () => handleEdit(row) },
+                    { label: "Supprimer", onClick: () => alert(`Supprimer ID: ${row.id_user}`) },
+                    { label: "Modifier rôle & level", onClick: () => handleEditUserLevelForm(row) },
                 ];
 
                 return <ActionMenu options={options} />;
             },
-        }
+        },
     ];
 
     const handleEdit = (row: Utilisateur) => {
         setSelectedUtilisateur(row);
         setIsModalOpen(true);
     };
-
 
     const handleEditUserLevelForm = (row: Utilisateur) => {
         setSelectedUtilisateur(row);
@@ -210,15 +144,18 @@ export default function Utlisateurs() {
 
     const handleSave = (updatedUser: Utilisateur) => {
         setUtilisateurs((prev) =>
-            prev.map((a) => (a.id === updatedUser.id ? updatedUser : a))
+            prev.map((a) => (a.id_user === updatedUser.id_user ? updatedUser : a))
         );
     };
 
-    // Fonction pour sauvegarder uniquement le role et le level
-    const handleSaveUserLevelRole = (updatedUser: { id: number; role: string; level: string }) => {
+    const handleSaveUserLevelRole = (updatedUser: {
+        id_user: number;
+        role: string;
+        level: string;
+    }) => {
         setUtilisateurs((prev) =>
             prev.map((a) =>
-                a.id === updatedUser.id
+                a.id_user === updatedUser.id_user
                     ? { ...a, role: updatedUser.role, level: updatedUser.level }
                     : a
             )
@@ -227,46 +164,46 @@ export default function Utlisateurs() {
 
     return (
         <>
-            <div>
-                <PageMeta
-                    title="Utilisateurs"
-                    description="page de gestion des utilisateurs"
-                />
-                <PageBreadcrumb pageTitle="Utilisateurs" />
-                <button
-                    onClick={() => navigate("/utilisateurs/ajouter-utilisateur")}
-                    className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
-                >
-                    Ajouter un Utilisateur
-                </button>
-                <div className="grid grid-cols-1 gap-6">
+            <PageMeta title="Utilisateurs" description="page de gestion des utilisateurs" />
+            <PageBreadcrumb pageTitle="Utilisateurs" />
 
-                    <DataTableLayout
-                        title="Liste des Utilisateurs"
-                        columns={columns}
-                        data={utilisateurs}
-                    />
-                    <EditUserModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        user={selectedUtilisateur}
-                        onSave={handleSave}
-                    />
-                    <EditUserLevelRoleForm
-                        isOpen={isModalUserOpen}
-                        onClose={() => setIsModalUserOpen(false)}
-                        user={
-                            selectedUtilisateur
-                                ? {
-                                    id: selectedUtilisateur.id,
-                                    role: selectedUtilisateur.role ?? "",
-                                    level: selectedUtilisateur.level ?? "",
-                                }
-                                : null
-                        }
-                        onSave={handleSaveUserLevelRole}
-                    />
-                </div>
+            <button
+                onClick={() => navigate("/utilisateurs/ajouter-utilisateur")}
+                className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
+            >
+                Ajouter un Utilisateur
+            </button>
+
+            <div className="grid grid-cols-1 gap-6">
+                <DataTableLayout
+                    title="Liste des Utilisateurs"
+                    columns={columns}
+                    data={utilisateurs}
+                    loading={loading}
+                    error={error}
+                />
+
+                {/* Modals */}
+                <EditUserModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    user={selectedUtilisateur}
+                    onSave={handleSave}
+                />
+                <EditUserLevelRoleForm
+                    isOpen={isModalUserOpen}
+                    onClose={() => setIsModalUserOpen(false)}
+                    user={
+                        selectedUtilisateur
+                            ? {
+                                id_user: selectedUtilisateur.id_user,
+                                role: selectedUtilisateur.role ?? "",
+                                level: selectedUtilisateur.level ?? "",
+                            }
+                            : null
+                    }
+                    onSave={handleSaveUserLevelRole}
+                />
             </div>
         </>
     );
