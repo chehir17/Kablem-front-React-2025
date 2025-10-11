@@ -1,40 +1,42 @@
 import axios from "axios";
 
-const API_URL = "http://localhost/platforme_KablemSPA_backEnd/public/api";
+const API_URL = "http://localhost:8000/api";
 
-export const login = async (email: any, password: any) => {
-    try {
-        const response = await axios.post(`${API_URL}/user-login`, {
-            email,
-            password,
-        });
+// Login utilisateur
+export const login = async (email: string, password: string) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/user-login`,
+      { email, password },
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-        if (response.data.status === 200) {
-            const { token, user } = response.data.data;
+    const { status, data, message } = response.data;
 
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("token", token);
-            localStorage.setItem("userData", JSON.stringify(user));
 
-            return { success: true, user };
-        } else {
-            return { success: false, message: response.data.message };
-        }
-    } catch (error) {
-        console.error("❌ Login error:", error);
-        swal({
-            title: "accés rejeter ",
-            text: "Verifier votre email et mot de passe ",
-            icon: "error",
-        });
-        return { success: false, message: "Erreur serveur" };
+    if (status === 200 && data?.token) {
+      // Stocker JWT + infos utilisateur dans localStorage
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userData", JSON.stringify(data.user));
+
+      return { success: true, user: data.user, token: data.token };
+    } else {
+      return { success: false, message: message || "Email ou mot de passe incorrect." };
     }
+  } catch (error: any) {
+    console.error("❌ Login error:", error);
+    // Axios stocke le message du backend dans error.response.data
+    const msg = error.response?.data?.message || "Erreur de connexion au serveur";
+    return { success: false, message: msg };
+  }
 };
 
 // Déconnexion
 export const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userData");
+  localStorage.removeItem("token");
+  localStorage.removeItem("userData");
+  localStorage.removeItem("isLoggedIn");
 };
 
 // Récupérer le token

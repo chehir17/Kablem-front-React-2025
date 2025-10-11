@@ -2,7 +2,7 @@ import axios from "axios";
 import { Utilisateur } from "../types/Utilisateur"
 
 const api = axios.create({
-  baseURL: "http://localhost/platforme_KablemSPA_backEnd/public/api",
+  baseURL: "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -10,7 +10,7 @@ const api = axios.create({
 
 // Ajouter un middleware pour inclure un token d'authentification (JWT)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("Token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

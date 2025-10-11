@@ -3,26 +3,19 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import { Modal } from "../ui/modal";
 import DatePicker from "../form/date-picker";
+import { Piece } from "../../types/Piece";
+import { ClientService } from "../../services/ClientService";
+import { Client } from "../../types/Client";
+import { Fournisseur } from "../../types/Fournisseur";
+import { FournisseurService } from "../../services/FournisseurService";
+import { PieceLivreService } from "../../services/PieceLivreService";
+import Select from "../form/Select";
 
 interface EditPieceLivreModalProps {
     isOpen: boolean;
     onClose: () => void;
-    pieceLivre: {
-        id: number;
-        pcs_client: string;
-        pcs_p1_p2: string;
-        pcs_p3: string;
-        pcs_fournisseur: string;
-        pcs_month: Date,
-    } | null;
-    onSave: (updatedPiece: {
-        id: number;
-        pcs_client: string;
-        pcs_p1_p2: string;
-        pcs_p3: string;
-        pcs_fournisseur: string;
-        pcs_month: Date,
-    }) => void;
+    pieceLivre: Piece | null;
+    onSave: (updatedPiece: Piece) => void;
 }
 
 export default function EditPieceLivreModal({
@@ -32,37 +25,110 @@ export default function EditPieceLivreModal({
     onSave,
 }: EditPieceLivreModalProps) {
     const [formData, setFormData] = useState({
-        id: 0,
-        pcs_client: "",
-        pcs_p1_p2: "",
-        pcs_p3: "",
-        pcs_fournisseur: "",
-        pcs_month: new Date(),
+        id_piece: 0,
+        id_client: "",
+        p1_p2: 0,
+        p3: 0,
+        id_fournisseur: "",
+        month: "",
     });
+
+    const [loading, setLoading] = useState(false);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+
+    const fetchClients = async () => {
+        try {
+            const data = await ClientService.getClient();
+            setClients(data);
+        } catch (err) {
+            console.log("Impossible de charger les clients.");
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchFournisseur = async () => {
+        try {
+            const data = await FournisseurService.getFournisseur();
+            setFournisseurs(data);
+        } catch (err) {
+            console.log("Impossible de charger les fournisseurs.");
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (pieceLivre) {
             setFormData(pieceLivre);
         }
+        fetchClients();
+        fetchFournisseur();
     }, [pieceLivre]);
+
+    const options = [
+        { value: "01", label: "01" },
+        { value: "02", label: "02" },
+        { value: "03", label: "03" },
+        { value: "04", label: "04" },
+        { value: "05", label: "05" },
+        { value: "06", label: "06" },
+        { value: "07", label: "07" },
+        { value: "08", label: "08" },
+        { value: "09", label: "09" },
+        { value: "10", label: "10" },
+        { value: "11", label: "11" },
+        { value: "12", label: "12" },
+    ];
+
+    const handleSelectChange = (
+        option: { value: string; label: string } | string,
+        field: string
+    ) => {
+        const value = typeof option === "string" ? option : option?.value;
+        setFormData({ ...formData, [field]: value });
+        // setErrors({ ...errors, [field]: "" });
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handleSubmit = async () => {
+         console.log(formData)
+        try {
+            setLoading(true);
+            const updated = await PieceLivreService.updatePieceLivre(formData.id_piece, formData);
+            console.log(" Piece mis à jour :", updated);
+            onSave(updated);
+            onClose();
+            swal({
+                title: "succès !",
+                text: " Piece est à jour !",
+                icon: "success",
+            })
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Ligne mis à jour :", formData);
-        onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de Piece !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
-
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
             <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
                 <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-                    Modifier Piéce livré N° "{formData.id}"
+                    Modifier Piéce livré N° "{formData.id_piece}"
                 </h4>
 
                 <form className="flex flex-col">
@@ -70,59 +136,55 @@ export default function EditPieceLivreModal({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
                                 <Label htmlFor="pcs_client">Piéce livré client</Label>
-                                <Input
-                                    type="text"
-                                    id="pcs_client"
-                                    name="pcs_client"
-                                    value={formData.pcs_client}
-                                    onChange={handleChange}
+                                <Select
+                                    options={clients.length > 0
+                                        ? clients.map(dep => ({ value: String(dep.id_client), label: dep.nom_client }))
+                                        : [{ value: "", label: "Aucun client disponible" }]
+                                    }
+                                    placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                    onChange={(val) => handleSelectChange(val, "id_client")}
                                 />
                             </div>
 
                             <div>
-                                <Label htmlFor="pcs_p1_p2">Piéce livré P1_P2</Label>
+                                <Label htmlFor="p1_p2">Piéce livré P1_P2</Label>
                                 <Input
-                                    type="text"
-                                    id="pcs_p1_p2"
-                                    name="pcs_p1_p2"
-                                    value={formData.pcs_p1_p2}
+                                    type="number"
+                                    id="p1_p2"
+                                    name="p1_p2"
+                                    value={formData.p1_p2}
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="pcs_p3">iéce livré P3</Label>
+                                <Label htmlFor="p3">iéce livré P3</Label>
                                 <Input
-                                    type="text"
-                                    id="pcs_p3"
-                                    name="pcs_p3"
-                                    value={formData.pcs_p3}
+                                    type="number"
+                                    id="p3"
+                                    name="p3"
+                                    value={formData.p3}
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="pcs_fournisseur">Piéce livré Fournisseur</Label>
-                                <Input
-                                    type="text"
-                                    id="pcs_fournisseur"
-                                    name="pcs_fournisseur"
-                                    value={formData.pcs_fournisseur}
-                                    onChange={handleChange}
+                                <Select
+                                    options={fournisseurs.length > 0
+                                        ? fournisseurs.map(dep => ({ value: String(dep.id_fournisseur), label: dep.nom_fournisseur }))
+                                        : [{ value: "", label: "Aucun fournisseur disponible" }]
+                                    }
+                                    placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                    onChange={(val) => handleSelectChange(val, "id_fournisseur")}
                                 />
                             </div>
                         </div>
                         <div className="mt-5 mb-3">
-                            <DatePicker
-                                id="mois"
-                                label="Mois"
-                                placeholder="Select a date"
-                                onChange={(dates, currentDateString) => {
-                                    // Récupère la première date sélectionnée (si c'est un tableau)
-                                    const selectedDate = Array.isArray(dates) ? dates[0] : dates;
-                                    setFormData({
-                                        ...formData,
-                                        pcs_month: selectedDate || new Date(),
-                                    });
-                                }}
+                            <Label>Mois</Label>
+                            <Select
+                                options={options}
+                                placeholder="Selecter une mois"
+                                onChange={(val) => handleSelectChange(val, "month")}
+                                className="dark:bg-dark-900"
                             />
                         </div>
                     </div>

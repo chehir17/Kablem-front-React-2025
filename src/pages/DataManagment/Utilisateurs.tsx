@@ -11,6 +11,7 @@ import { Utilisateur } from "../../types/Utilisateur";
 import { UserService } from "../../services/UserService";
 import { DepartementService } from "../../services/DepartementService";
 import { Departement } from "../../types/Departement";
+import axios from "axios";
 
 const tableData: Utilisateur[] = [];
 
@@ -35,7 +36,7 @@ export default function Utlisateurs() {
         const fetchData = async () => {
             try {
                 const users = await UserService.getUsers();
-                const depsResponse = await DepartementService.getDepartements(); // ✅ récupère tous les départements
+                const depsResponse = await DepartementService.getDepartements();
                 setUtilisateurs(users);
                 setDepartements(depsResponse);
             } catch (err) {
@@ -49,7 +50,6 @@ export default function Utlisateurs() {
         fetchData();
     }, []);
 
-    // Fonction utilitaire pour trouver le nom du département
     const getDepartementName = (id: string | number) => {
         const dep = departements.find((d) => d.id_departement === Number(id));
         return dep ? dep.nom_departement : "N/A";
@@ -148,18 +148,52 @@ export default function Utlisateurs() {
         );
     };
 
-    const handleSaveUserLevelRole = (updatedUser: {
+    const handleSaveUserLevelRole = async (updatedUser: {
         id_user: number;
         role: string;
         level: string;
     }) => {
-        setUtilisateurs((prev) =>
-            prev.map((a) =>
-                a.id_user === updatedUser.id_user
-                    ? { ...a, role: updatedUser.role, level: updatedUser.level }
-                    : a
-            )
-        );
+        try {
+            const response = await axios.put(
+                `http://localhost:8000/api/user/${updatedUser.id_user}`,
+                {
+                    role: updatedUser.role,
+                    level: updatedUser.level,
+                }
+            );
+
+            if (response.status === 200) {
+                console.log("Utilisateur mis à jour avec succès :", response.data);
+
+                setUtilisateurs((prev) =>
+                    prev.map((a) =>
+                        a.id_user === updatedUser.id_user
+                            ? { ...a, role: updatedUser.role, level: updatedUser.level }
+                            : a
+                    )
+                );
+
+                swal({
+                    title: "Good job!",
+                    text: "L'utilisateur a été modifié avec succès.",
+                    icon: "success",
+                })
+            } else {
+                console.warn(" Réponse inattendue :", response);
+                swal({
+                    title: "Erreur!",
+                    text: "Erreur lors de la mise à jour de l'utilisateur.",
+                    icon: "error",
+                })
+            }
+        } catch (error: any) {
+            console.error(" Erreur lors de la mise à jour :", error);
+            swal({
+                title: "Erreur!",
+                text: "Erreur de connexion au serveur !",
+                icon: "error",
+            })
+        }
     };
 
     return (
@@ -183,7 +217,6 @@ export default function Utlisateurs() {
                     error={error}
                 />
 
-                {/* Modals */}
                 <EditUserModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}

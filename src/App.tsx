@@ -32,6 +32,9 @@ import AddPlanActionForm from "./components/PlanAction/AddPlanActionForm";
 import AddSuiviClientForm from "./components/SuiviClient/AddSuiviClientForm";
 import AddSuiviFournisseurForm from "./components/SuiviFournisseur/AddSuiviFournisseurForm";
 import AddSuiviSuperControleForm from "./components/SuiviSuperControle/AddSuiviSuperControleForm";
+import ProtectedRoute from "./utils/ProtectedRoute";
+import AdminRoute from "./utils/AdminRoute";
+import Error500 from "./pages/OtherPage/Error500";
 
 export default function App() {
   return (
@@ -42,52 +45,126 @@ export default function App() {
         <Route path="/" element={<SignIn />} />
 
         {/* Dashboard Layout */}
-        <Route element={<AppLayout />}>
-          <Route index path="/dashboard" element={<Home />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route index path="/dashboard" element={<Home />} />
 
-          {/* Others Page */}
-          <Route path="/profile" element={<UserProfiles />} />
-          <Route path="/calendar" element={<Calendar />} />
+            {/* Others Page */}
+            <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/calendar" element={<Calendar />} />
 
-          {/* Forms */}
-          <Route path="/form-elements" element={<FormElements />} />
+            {/* Forms */}
+            <Route path="/form-elements" element={<FormElements />} />
 
-          {/* Ui Elements */}
-          <Route path="/alerts" element={<Alerts />} />
+            {/* Ui Elements */}
+            <Route path="/alerts" element={<Alerts />} />
 
-          {/* Plan d'action */}
-          <Route path="/plan-action" element={<PlanActionList />} />
+            {/* Plan d'action */}
+            <Route path="/plan-action" element={<PlanActionList />} />
 
-          {/* Data management */}
-          <Route path="/articles" element={<Article />} />
-          <Route path="/historique-taches" element={<HistoriqueTache />} />
-          <Route path="/lignes" element={<Ligne />} />
-          <Route path="/pieces-livrees" element={<PiecesLivre />} />
-          <Route path="/utilisateurs" element={<Utilisateur />} />
-          <Route path="/fournisseurs" element={<Fournisseur />} />
-          <Route path="/clients" element={<Client />} />
-          <Route path="/lignes/ajouter-ligne" element={<AddLigneForm />} />
-          <Route path="/pieces/ajouter-pieces" element={<AddPieceLivreForm />} />
-          <Route path="/utilisateurs/ajouter-utilisateur" element={<AddUserForm />} />
+            {/* Data management (Admin only) */}
+            <Route
+              path="/articles"
+              element={
+                <AdminRoute>
+                  <Article />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/historique-taches"
+              element={
+                <AdminRoute>
+                  <HistoriqueTache />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/lignes"
+              element={
+                <AdminRoute>
+                  <Ligne />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/lignes/ajouter-ligne"
+              element={
+                <AdminRoute>
+                  <AddLigneForm />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/pieces-livrees"
+              element={
+                <AdminRoute>
+                  <PiecesLivre />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/pieces/ajouter-pieces"
+              element={
+                <AdminRoute>
+                  <AddPieceLivreForm />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/utilisateurs"
+              element={
+                <AdminRoute>
+                  <Utilisateur />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/utilisateurs/ajouter-utilisateur"
+              element={
+                <AdminRoute>
+                  <AddUserForm />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/fournisseurs"
+              element={
+                <AdminRoute>
+                  <Fournisseur />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/clients"
+              element={
+                <AdminRoute>
+                  <Client />
+                </AdminRoute>
+              }
+            />
 
-          {/* Tools management */}
-          <Route path="/fich-dmpp" element={<FichDMPP />} />
-          <Route path="/rapport-nc" element={<RapportNonConformite />} />
-          <Route path="/registre-scrap" element={<RegistreSCRAP />} />
-          <Route path="/suivi-client" element={<SuiviDefautClient />} />
-          <Route path="/suivi-fournisseur" element={<SuiviDefaultFournisseur />} />
-          <Route path="/suivi-super-controle" element={<SuiviSuperControle />} />
-          <Route path="/rapport-nc/add-rnc" element={<AddRapportNcFrom />} />
-          <Route path="/fich-dmpp/add-fich-dmpp" element={<AddFIchDMPPForm />} />
-          <Route path="/scrap/add-reg-scrap" element={<AddRegisterSCRAPForm />} />
-          <Route path="/plan-action/add-plan-action" element={<AddPlanActionForm />} />
-          <Route path="/suivi-client/add-suivi-client" element={<AddSuiviClientForm />} />
-          <Route path="/suivi-fournisseur/add-suivi-fournisseur" element={<AddSuiviFournisseurForm />} />
-          <Route path="/suivi-super-controle/add-suivi-super-controle" element={<AddSuiviSuperControleForm />} />
+
+            {/* Tools management */}
+            <Route path="/fich-dmpp" element={<FichDMPP />} />
+            <Route path="/rapport-nc" element={<RapportNonConformite />} />
+            <Route path="/registre-scrap" element={<RegistreSCRAP />} />
+            <Route path="/suivi-client" element={<SuiviDefautClient />} />
+            <Route path="/suivi-fournisseur" element={<SuiviDefaultFournisseur />} />
+            <Route path="/suivi-super-controle" element={<SuiviSuperControle />} />
+            <Route path="/rapport-nc/add-rnc" element={<AddRapportNcFrom />} />
+            <Route path="/fich-dmpp/add-fich-dmpp" element={<AddFIchDMPPForm />} />
+            <Route path="/scrap/add-reg-scrap" element={<AddRegisterSCRAPForm />} />
+            <Route path="/plan-action/add-plan-action/:id/:type" element={<AddPlanActionForm />} />
+            <Route path="/plan-action/add-plan-action" element={<AddPlanActionForm />} />
+            <Route path="/suivi-client/add-suivi-client" element={<AddSuiviClientForm />} />
+            <Route path="/suivi-fournisseur/add-suivi-fournisseur" element={<AddSuiviFournisseurForm />} />
+            <Route path="/suivi-super-controle/add-suivi-super-controle" element={<AddSuiviSuperControleForm />} />
+          </Route>
         </Route>
-
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
+        <Route path="/error-500" element={<Error500 />} />
       </Routes>
     </Router>
   );

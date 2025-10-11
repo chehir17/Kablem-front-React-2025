@@ -44,6 +44,7 @@ export default function RapportNonConformite() {
     }
 
 
+    const [type,setType] = useState('nc');
     const [rapports, setRapports] = useState<RapportNC[]>([
         {
             id: 1,
@@ -509,7 +510,7 @@ export default function RapportNonConformite() {
         { name: "occurance_defaut", placeholder: "Filtrer par Occurence" },
 
     ];
-    
+
     // Fonction pour filtrer les rapports
     const filteredRapports = rapports.filter((r) => {
         return Object.entries(filters).every(([key, value]) => {
@@ -564,7 +565,17 @@ export default function RapportNonConformite() {
         },
         { name: "Date Action Immédiate", selector: (row) => row.date_ac_immed, sortable: true },
         { name: "Date vérification Action Immédiate", selector: (row) => row.date_verif_ac_immed, sortable: true },
-
+        {
+            name: "ajout plan action ",
+            cell: (row) => {
+                return <button
+                    onClick={() => navigate("/plan-action/add-plan-action/" + row.id + "/" + type)}
+                    className="px-1 py-1 my-1 text-xs text-white bg-orange-500 rounded hover:bg-orange-700 hover:shadow-xl transition-shadow duration-200"
+                >
+                    plan d'action
+                </button>;
+            }
+        },
         {
             name: "Actions & (AC/AP)",
             cell: (row) => <ActionMenu options={getRapportOptions(row)} />,

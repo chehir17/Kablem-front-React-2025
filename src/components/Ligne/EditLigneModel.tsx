@@ -4,32 +4,18 @@ import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
 import DatePicker from "../form/date-picker";
+import { Ligne } from "../../types/Ligne";
+import { LigneService } from "../../services/LigneService";
+import { Utilisateur } from "../../types/Utilisateur";
+import { Departement } from "../../types/Departement";
+import { DepartementService } from "../../services/DepartementService";
+import { UserService } from "../../services/UserService";
 
 interface EditLigneModalProps {
     isOpen: boolean;
     onClose: () => void;
-    ligne: {
-        id: number;
-        nom_ligne: string;
-        ref_ligne: string;
-        departement: string;
-        Capacite_production: number;
-        Resp_ligne: string;
-        Date_maintenance: Date;
-        proch_entretien: Date;
-        status: string;
-    } | null;
-    onSave: (updatedLigne: {
-        id: number;
-        nom_ligne: string;
-        ref_ligne: string;
-        departement: string;
-        Capacite_production: number;
-        Resp_ligne: string;
-        Date_maintenance: Date;
-        proch_entretien: Date;
-        status: string;
-    }) => void;
+    ligne: Ligne | null;
+    onSave: (updatedLigne: Ligne) => void;
 }
 
 export default function EditLigneModal({
@@ -38,36 +24,93 @@ export default function EditLigneModal({
     ligne,
     onSave,
 }: EditLigneModalProps) {
+    const [departements, setDepartements] = useState<Departement[]>([]);
+    const [user, setUser] = useState<Utilisateur[]>([]);
+    const [departementError, setDepartementError] = useState<any>({});
+
     const [formData, setFormData] = useState({
-        id: 0,
+        id_ligne: 0,
         nom_ligne: "",
-        ref_ligne: "",
+        ref: "",
         departement: "",
-        Capacite_production: 0,
-        Resp_ligne: "",
+        cap_production: 0,
+        responsable: "",
         Date_maintenance: new Date(),
         proch_entretien: new Date(),
         status: "",
     });
 
+    const [loading, setLoading] = useState(false);
+
+    const fetchDepartements = async () => {
+        try {
+            const data = await DepartementService.getDepartements();
+            setDepartements(data);
+        } catch (err) {
+            setDepartementError("Impossible de charger les départements.");
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const users = await UserService.getUsers();
+            setUser(users);
+        } catch (err) {
+            setDepartementError("Impossible de charger les utilisateurs.");
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (ligne) {
             setFormData(ligne);
         }
+        fetchDepartements();
+        fetchUsers();
     }, [ligne]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSelectChange = (value: string) => {
-        setFormData({ ...formData, status: value });
+    const handleSelectChange = (
+        option: { value: string; label: string } | string,
+        field: string
+    ) => {
+        const value = typeof option === "string" ? option : option?.value;
+        setFormData({ ...formData, [field]: value });
+        // setErrors({ ...errors, [field]: "" });
     };
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Ligne mis à jour :", formData);
-        onClose();
+    const handleSubmit = async () => {
+
+        try {
+            setLoading(true);
+            const updated = await LigneService.updateLigne(formData.id_ligne, formData);
+            console.log(" Ligne mis à jour :", updated);
+            onSave(updated);
+            swal({
+                title: "succès !",
+                text: " Ligne est à jour !",
+                icon: "success",
+            })
+            onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de Ligne !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const options = [
@@ -75,16 +118,10 @@ export default function EditLigneModal({
         { value: "inactif", label: "Inactif" },
     ];
 
-    const departementOptions = [
-        { value: "qualité", label: "Qualité" },
-        { value: "dep_extrusion", label: "Département extrusion" },
-        { value: "dep_cablage", label: "Département câblage" },
-        { value: "dep_assemblage", label: "Département assemblage" },
-    ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
-            <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-[900px] m-2">
+            <div className="no-scrollbar relative w-full max-w-[900px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
                 <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
                     Modifier "{formData.nom_ligne}"
                 </h4>
@@ -109,17 +146,19 @@ export default function EditLigneModal({
                                     type="text"
                                     id="ref_ligne"
                                     name="ref_ligne"
-                                    value={formData.ref_ligne}
+                                    value={formData.ref}
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
                                 <Label>Département</Label>
                                 <Select
-                                    options={departementOptions}
-                                    placeholder="Sélectionner un département"
-                                    onChange={handleSelectChange}
-                                    value={formData.departement}
+                                    options={departements.length > 0
+                                        ? departements.map(dep => ({ value: String(dep.id_departement), label: dep.nom_departement }))
+                                        : [{ value: "", label: "Aucun département disponible" }]
+                                    }
+                                    placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                    onChange={(val) => handleSelectChange(val, "departement")}
                                 />
                             </div>
                             <div>
@@ -128,18 +167,19 @@ export default function EditLigneModal({
                                     type="number"
                                     id="Capacite_production"
                                     name="Capacite_production"
-                                    value={formData.Capacite_production}
+                                    value={formData.cap_production}
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="Resp_ligne">Responsable de ligne</Label>
-                                <Input
-                                    type="text"
-                                    id="Resp_ligne"
-                                    name="Resp_ligne"
-                                    value={formData.Resp_ligne}
-                                    onChange={handleChange}
+                                <Label htmlFor="responsable">Responsable de ligne</Label>
+                                <Select
+                                    options={user.length > 0
+                                        ? user.map(user => ({ value: String(user.id_user), label: user.first_name }))
+                                        : [{ value: "", label: "Aucun utilisateur disponible" }]
+                                    }
+                                    placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                    onChange={(val) => handleSelectChange(val, "responsable")}
                                 />
                             </div>
                             <div>
@@ -148,7 +188,6 @@ export default function EditLigneModal({
                                     label="Date de maintenance"
                                     placeholder="Select a date"
                                     onChange={(dates,) => {
-                                        // Récupère la première date sélectionnée (si c'est un tableau)
                                         const selectedDate = Array.isArray(dates) ? dates[0] : dates;
                                         setFormData({
                                             ...formData,
@@ -163,7 +202,6 @@ export default function EditLigneModal({
                                     label="Prochaine maintenance"
                                     placeholder="Select a date"
                                     onChange={(dates,) => {
-                                        // Récupère la première date sélectionnée (si c'est un tableau)
                                         const selectedDate = Array.isArray(dates) ? dates[0] : dates;
                                         setFormData({
                                             ...formData,
@@ -177,7 +215,7 @@ export default function EditLigneModal({
                                 <Select
                                     options={options}
                                     placeholder="Sélectionner un statut"
-                                    onChange={handleSelectChange}
+                                    onChange={(val) => handleSelectChange(val, "status")}
                                     value={formData.status}
                                 />
                             </div>

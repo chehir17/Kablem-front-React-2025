@@ -1,49 +1,19 @@
-import { JSX, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Badge from "../../components/ui/badge/Badge";
 import DataTableLayout from "../../layout/DataTableLayout";
 import { useNavigate } from "react-router";
 import EditLigneModal from "../../components/Ligne/EditLigneModel";
-import { Update } from "../../icons";
-import { Trash } from "../../icons";
+import { Update, Trash } from "../../icons";
+import { Ligne } from "../../types/Ligne";
+import { LigneService } from "../../services/LigneService";
+import { UserService } from "../../services/UserService";
+import { DepartementService } from "../../services/DepartementService";
+import { Departement } from "../../types/Departement";
+import { Utilisateur } from "../../types/Utilisateur";
 
-interface Ligne {
-    id: number;
-    nom_ligne: string;
-    ref_ligne: string;
-    departement: string;
-    Capacite_production: number;
-    Resp_ligne: string,
-    Date_maintenance: Date,
-    proch_entretien: Date,
-    status: string,
-}
-
-const tableData: Ligne[] = [
-    {
-        id: 1,
-        nom_ligne: "Ligne A",
-        ref_ligne: "REF123",
-        departement: "Département A",
-        Capacite_production: 1000,
-        Resp_ligne: "Responsable A",
-        Date_maintenance: new Date("2025-09-15"),
-        proch_entretien: new Date("2025-12-20"),
-        status: "Actif",
-    },
-    {
-        id: 2,
-        nom_ligne: "Ligne B",
-        ref_ligne: "REF456",
-        departement: "Département B",
-        Capacite_production: 2000,
-        Resp_ligne: "Responsable B",
-        Date_maintenance: new Date("2025-10-20"),
-        proch_entretien: new Date("2025-11-23"),
-        status: "Inactif",
-    },
-];
+const tableData: Ligne[] = [];
 
 interface Column<T> {
     name: string;
@@ -52,12 +22,70 @@ interface Column<T> {
     cell?: (row: T) => JSX.Element;
 }
 
-
 export default function Lignes() {
     const [lignes, setLignes] = useState<Ligne[]>(tableData);
     const [selectedLigne, setSelectedLigne] = useState<Ligne | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [departements, setDepartements] = useState<Departement[]>([]);
+    const [users, setUsers] = useState<Utilisateur[]>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [dataLignes, dataDeps, dataUsers] = await Promise.all([
+                    LigneService.getLigne(),
+                    DepartementService.getDepartements(),
+                    UserService.getUsers(),
+                ]);
+
+                if (Array.isArray(dataLignes)) setLignes(dataLignes);
+                if (Array.isArray(dataDeps)) setDepartements(dataDeps);
+                if (Array.isArray(dataUsers)) setUsers(dataUsers);
+            } catch (err) {
+                console.error(err);
+                setError("Erreur lors du chargement des données.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const departementMap = Object.fromEntries(
+        departements.map((d) => [d.id_departement, d.nom_departement])
+    );
+
+    const userMap = Object.fromEntries(
+        users.map((u) => [u.id_user, `${u.first_name} ${u.last_name}`])
+    );
+
+    const handleEdit = (row: Ligne) => {
+        setSelectedLigne(row);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = (updatedLigne: Ligne) => {
+        setLignes((prev) =>
+            prev.map((a) =>
+                a.id_ligne === updatedLigne.id_ligne ? updatedLigne : a
+            )
+        );
+        setIsModalOpen(false);
+    };
+
+    const handleDelete = async (id_ligne: number) => {
+        if (!window.confirm("Voulez-vous vraiment supprimer cette ligne ?")) return;
+        try {
+            await LigneService.deleteLigne(id_ligne);
+            setLignes((prev) => prev.filter((a) => a.id_ligne !== id_ligne));
+        } catch (err) {
+            console.error("Erreur lors de la suppression :", err);
+        }
+    };
 
     const columns: Column<Ligne>[] = [
         {
@@ -67,32 +95,32 @@ export default function Lignes() {
         },
         {
             name: "Référence Ligne",
-            selector: (row) => row.ref_ligne,
+            selector: (row) => row.ref,
             sortable: true,
         },
         {
             name: "Département",
-            selector: (row) => row.departement,
-            sortable: true,
-        },
-        {
-            name: "Capacité de Production",
-            selector: (row) => row.Capacite_production + " (Pcs)",
+            selector: (row) => departementMap[row.departement] || "Non défini",
             sortable: true,
         },
         {
             name: "Responsable de la Ligne",
-            selector: (row) => row.Resp_ligne,
+            selector: (row) => userMap[row.responsable] || "Non défini",
             sortable: true,
         },
         {
-            name: "Derniere Maintenance",
-            selector: (row) => row.Date_maintenance.toLocaleDateString(),
+            name: "Capacité de Production",
+            selector: (row) => `${row.cap_production} (Pcs)`,
             sortable: true,
         },
         {
-            name: "Prochaine maintenance",
-            selector: (row) => row.proch_entretien.toLocaleDateString(),
+            name: "Dernière Maintenance",
+            selector: (row) => row.Date_maintenance,
+            sortable: true,
+        },
+        {
+            name: "Prochaine Maintenance",
+            selector: (row) => row.proch_entretien,
             sortable: true,
         },
         {
@@ -102,9 +130,9 @@ export default function Lignes() {
             cell: (row) => (
                 <Badge
                     color={
-                        row.status === "Actif"
+                        row.status === "actif"
                             ? "success"
-                            : row.status === "Inactif"
+                            : row.status === "inactif"
                                 ? "warning"
                                 : "error"
                     }
@@ -125,7 +153,7 @@ export default function Lignes() {
                         <Update className="w-6 h-6 font-bold" />
                     </button>
                     <button
-                        onClick={() => alert(`Supprimer fournisseur ID: ${row.id}`)}
+                        onClick={() => handleDelete(row.id_ligne)}
                         className="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
                     >
                         <Trash className="w-5 h-5 font-bold" />
@@ -135,16 +163,10 @@ export default function Lignes() {
         },
     ];
 
-    const handleEdit = (row: Ligne) => {
-        setSelectedLigne(row);
-        setIsModalOpen(true);
-    };
-
-    const handleSave = (updatedLigne: Ligne) => {
-        setLignes((prev) =>
-            prev.map((a) => (a.id === updatedLigne.id ? updatedLigne : a))
-        );
-    };
+    if (loading)
+        return <p className="p-4 text-center">⏳ Chargement des Lignes...</p>;
+    if (error)
+        return <p className="p-4 text-center text-red-600">{error}</p>;
 
     return (
         <>
@@ -160,12 +182,13 @@ export default function Lignes() {
                 >
                     Ajouter une Ligne
                 </button>
-                <div className="grid grid-cols-1 gap-6 ">
-
+                <div className="grid grid-cols-1 gap-6">
                     <DataTableLayout
                         title="Liste des Lignes"
                         columns={columns}
                         data={lignes}
+                        loading={loading}
+                        error={error}
                     />
                     <EditLigneModal
                         isOpen={isModalOpen}

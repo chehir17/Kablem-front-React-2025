@@ -47,8 +47,8 @@ export default function EditUserLevelRoleForm({
   };
 
   const levelOptions = [
-    { value: "high", label: "High level" },
-    { value: "medium", label: "Medium level" },
+    { value: "High level", label: "High level" },
+    { value: "Medium level", label: "Medium level" },
   ];
 
   const roleOptions = [

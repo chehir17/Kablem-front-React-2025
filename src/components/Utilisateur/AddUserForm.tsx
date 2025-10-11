@@ -38,9 +38,18 @@ export default function AddUserForm() {
         fetchDepartements();
     }, []);
 
-    const optionsZone = [
-        { value: "zone A", label: "Zone A" },
-        { value: "zone B", label: "Zone B" },
+    const zone = [
+        { value: "P1", label: "P1" },
+        { value: "P2", label: "P2" },
+        { value: "P3", label: "P3" },
+        { value: "P1 + P2", label: "P1 + P2" },
+        { value: "P1 + P2 + P3", label: "P1 + P2 + P3" },
+        { value: "CET", label: "CET" },
+        { value: "Magasin", label: "Magasin" },
+        { value: "P3-1", label: "P3-1" },
+        { value: "P3-2", label: "P3-2" },
+        { value: "P3-3", label: "P3-3" },
+        { value: "Usine", label: "Usine" },
     ];
 
     const optionStatut = [
@@ -226,7 +235,7 @@ export default function AddUserForm() {
                     <div>
                         <Label>Zone</Label>
                         <Select
-                            options={optionsZone}
+                            options={zone}
                             placeholder="Select"
                             onChange={(val) => handleSelectChange(val, "zone")}
                         />

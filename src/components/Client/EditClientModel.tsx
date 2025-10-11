@@ -3,6 +3,8 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
+import { Client } from "../../types/Client";
+import { ClientService } from "../../services/ClientService";
 
 interface Option {
     value: string;
@@ -12,22 +14,8 @@ interface Option {
 interface EditClientModalProps {
     isOpen: boolean;
     onClose: () => void;
-    client: {
-        id: number;
-        nom_client: string;
-        reference_client: string;
-        societe: string;
-        email: string;
-        status: string;
-    } | null;
-    onSave: (updatedClient: {
-        id: number;
-        nom_client: string;
-        reference_client: string;
-        societe: string;
-        email: string;
-        status: string;
-    }) => void;
+    client: Client | null;
+    onSave: (updatedClient: Client) => void;
 }
 
 export default function EditClientModal({
@@ -37,17 +25,20 @@ export default function EditClientModal({
     onSave,
 }: EditClientModalProps) {
     const [formData, setFormData] = useState({
-        id: 0,
+        id_client: 0,
         nom_client: "",
-        reference_client: "",
+        ref: "",
         societe: "",
         email: "",
         status: "",
     });
 
-    const typeOptions: Option[] = [
-        { value: "Matiere Premiere", label: "Matiere Premiere" },
-        { value: "Produit Final", label: "Produit Final" },
+    const [loading, setLoading] = useState(false);
+
+
+    const options = [
+        { value: "actif", label: "Actif" },
+        { value: "inactif", label: "Inactif" },
     ];
 
     useEffect(() => {
@@ -64,16 +55,32 @@ export default function EditClientModal({
         setFormData({ ...formData, status: value });
     };
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Client mis à jour :", formData);
-        onClose();
+    const handleSubmit = async () => {
+
+        try {
+            setLoading(true);
+            const updated = await ClientService.updateClient(formData.id_client, formData);
+            console.log("✅ Article mis à jour :", updated);
+            onSave(updated);
+            swal({
+                title: "succès !",
+                text: " Client mis à jour !",
+                icon: "success",
+            })
+            onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de client !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const options = [
-        { value: "actif", label: "Actif" },
-        { value: "inactif", label: "Inactif" },
-    ];
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
@@ -97,12 +104,12 @@ export default function EditClientModal({
                             </div>
 
                             <div>
-                                <Label htmlFor="reference_client">Reference Client</Label>
+                                <Label htmlFor="ref">Reference Client</Label>
                                 <Input
                                     type="text"
-                                    id="reference_client"
-                                    name="reference_client"
-                                    value={formData.reference_client}
+                                    id="ref"
+                                    name="ref"
+                                    value={formData.ref}
                                     onChange={handleChange}
                                 />
                             </div>
@@ -149,9 +156,11 @@ export default function EditClientModal({
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className="px-3 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-700"
+                            className={`px-4 py-2 text-sm text-white rounded ${loading ? "bg-blue-300" : "bg-blue-600 hover:bg-blue-700"
+                                }`}
+                            disabled={loading}
                         >
-                            Sauvegarder
+                            {loading ? "Sauvegarde..." : "Sauvegarder"}
                         </button>
                     </div>
                 </form>

@@ -3,6 +3,8 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
+import { Fournisseur } from "../../types/Fournisseur";
+import { FournisseurService } from "../../services/FournisseurService";
 
 interface Option {
     value: string;
@@ -12,22 +14,8 @@ interface Option {
 interface EditFournisseurModalProps {
     isOpen: boolean;
     onClose: () => void;
-    fournisseur: {
-        id: number;
-        nom_fournisseur: string;
-        reference_fournisseur: string;
-        classification: string;
-        email: string;
-        status: string;
-    } | null;
-    onSave: (updatedFournisseur: {
-        id: number;
-        nom_fournisseur: string;
-        reference_fournisseur: string;
-        classification: string;
-        email: string;
-        status: string;
-    }) => void;
+    fournisseur: Fournisseur | null;
+    onSave: (updatedFournisseur: Fournisseur) => void;
 }
 
 export default function EditFournisseurModal({
@@ -37,17 +25,25 @@ export default function EditFournisseurModal({
     onSave,
 }: EditFournisseurModalProps) {
     const [formData, setFormData] = useState({
-        id: 0,
+        id_fournisseur: 0,
         nom_fournisseur: "",
-        reference_fournisseur: "",
+        ref_fournisseur: "",
         classification: "",
         email: "",
         status: "",
     });
 
-    const typeOptions: Option[] = [
-        { value: "Matiere Premiere", label: "Matiere Premiere" },
-        { value: "Produit Final", label: "Produit Final" },
+    const [loading, setLoading] = useState(false);
+
+    const options = [
+        { value: "actif", label: "Actif" },
+        { value: "inactif", label: "Inactif" },
+    ];
+
+    const classification = [
+        { value: "C1", label: "C1" },
+        { value: "C2", label: "C2" },
+        { value: "C3", label: "C3" },
     ];
 
     useEffect(() => {
@@ -55,6 +51,7 @@ export default function EditFournisseurModal({
             setFormData(fournisseur);
         }
     }, [fournisseur]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -64,16 +61,33 @@ export default function EditFournisseurModal({
         setFormData({ ...formData, status: value });
     };
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Fournisseur mis à jour :", formData);
-        onClose();
+
+    const handleSubmit = async () => {
+
+        try {
+            setLoading(true);
+            const updated = await FournisseurService.updateFournisseur(formData.id_fournisseur, formData);
+            console.log("✅ Fournisseur mis à jour :", updated);
+            onSave(updated);
+            swal({
+                title: "succès !",
+                text: " Fournisseur est à jour !",
+                icon: "success",
+            })
+            onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de Fournisseur !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const options = [
-        { value: "actif", label: "Actif" },
-        { value: "inactif", label: "Inactif" },
-    ];
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
@@ -102,18 +116,17 @@ export default function EditFournisseurModal({
                                     type="text"
                                     id="reference_fournisseur"
                                     name="reference_fournisseur"
-                                    value={formData.reference_fournisseur}
+                                    value={formData.ref_fournisseur}
                                     onChange={handleChange}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="classification">Classification</Label>
-                                <Input
-                                    type="text"
-                                    id="classification"
-                                    name="classification"
-                                    value={formData.classification}
-                                    onChange={handleChange}
+                                <Select
+                                    options={classification}
+                                    placeholder="Sélectionner une classification"
+                                    onChange={handleSelectChange}
+                                    value={formData.status}
                                 />
                             </div>
                             <div>
@@ -130,7 +143,7 @@ export default function EditFournisseurModal({
                                 <Label>Statut</Label>
                                 <Select
                                     options={options}
-                                    placeholder="Sélectionner un statut"
+                                    placeholder="Sélectionner une statut"
                                     onChange={handleSelectChange}
                                     value={formData.status}
                                 />

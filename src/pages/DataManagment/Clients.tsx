@@ -1,4 +1,4 @@
-import { JSX, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import Badge from "../../components/ui/badge/Badge";
@@ -7,34 +7,11 @@ import AddClientForm from "../../components/Client/AddClientForm";
 import EditClientModal from "../../components/Client/EditClientModel";
 import { Trash } from "../../icons";
 import { Update } from "../../icons";
+import { Client } from "../../types/Client";
+import { ClientService } from "../../services/ClientService";
 
-interface Client {
-    id: number;
-    nom_client: string;
-    reference_client: string;
-    societe: string;
-    email: string,
-    status: string,
-}
+const tableData: Client[] = [];
 
-const tableData: Client[] = [
-    {
-        id: 1,
-        nom_client: "Client A",
-        reference_client: "REF123",
-        societe: "Societe A",
-        email: "clienta@example.com",
-        status: "Actif",
-    },
-    {
-        id: 2,
-        nom_client: "Client B",
-        reference_client: "REF456",
-        societe: "Societe B",
-        email: "clientb@example.com",
-        status: "Inactif",
-    },
-];
 
 interface Column<T> {
     name: string;
@@ -48,6 +25,52 @@ export default function Clients() {
     const [clients, setClients] = useState<Client[]>(tableData);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await ClientService.getClient();
+                if (Array.isArray(data)) {
+                    setClients(data);
+                } else {
+                    console.error("La réponse n'est pas un tableau :", data);
+                    setClients([]);
+                }
+            } catch (err) {
+                setError("Impossible de charger les articles.");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleEdit = (row: Client) => {
+        setSelectedClient(row);
+        setIsModalOpen(true);
+    };
+
+    const handleSave = (updatedArticle: Client) => {
+        setClients((prev) =>
+            prev.map((a) =>
+                a.id_client === updatedArticle.id_client ? updatedArticle : a
+            )
+        );
+        setIsModalOpen(false);
+    };
+
+    const handleDelete = async (id_client: number) => {
+        if (!window.confirm("Voulez-vous vraiment supprimer cet client ?")) return;
+        try {
+            await ClientService.deleteClient(id_client);
+            setClients((prev) => prev.filter((a) => a.id_client !== id_client));
+        } catch (err) {
+            console.error("Erreur lors de la suppression :", err);
+        }
+    };
 
     const columns: Column<Client>[] = [
         {
@@ -57,7 +80,7 @@ export default function Clients() {
         },
         {
             name: "Référence Client",
-            selector: (row) => row.reference_client,
+            selector: (row) => row.ref,
             sortable: true,
         },
         {
@@ -77,9 +100,9 @@ export default function Clients() {
             cell: (row) => (
                 <Badge
                     color={
-                        row.status === "Actif"
+                        row.status === "actif"
                             ? "success"
-                            : row.status === "Inactif"
+                            : row.status === "inactif"
                                 ? "warning"
                                 : "error"
                     }
@@ -100,7 +123,7 @@ export default function Clients() {
                         <Update className="w-6 h-6 font-bold" />
                     </button>
                     <button
-                        onClick={() => alert(`Supprimer client ID: ${row.id}`)}
+                        onClick={() => alert(`Supprimer client ID: ${row.id_client}`)}
                         className="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
                     >
                         <Trash className="w-5 h-5 font-bold" />
@@ -110,16 +133,8 @@ export default function Clients() {
         },
     ];
 
-    const handleEdit = (row: Client) => {
-        setSelectedClient(row);
-        setIsModalOpen(true);
-    };
-
-    const handleSave = (updatedClient: Client) => {
-        setClients((prev) =>
-            prev.map((a) => (a.id === updatedClient.id ? updatedClient : a))
-        );
-    };
+    if (loading) return <p className="p-4 text-center">⏳ Chargement des Clients...</p>;
+    if (error) return <p className="p-4 text-center text-red-600">{error}</p>;
 
     return (
         <>
@@ -135,13 +150,17 @@ export default function Clients() {
                             title="Liste des Clients"
                             columns={columns}
                             data={clients}
+                            loading={loading}
+                            error={error}
                         />
-                        <EditClientModal
-                            isOpen={isModalOpen}
-                            onClose={() => setIsModalOpen(false)}
-                            client={selectedClient}
-                            onSave={handleSave}
-                        />
+                        {selectedClient && (
+                            <EditClientModal
+                                isOpen={isModalOpen}
+                                onClose={() => setIsModalOpen(false)}
+                                client={selectedClient}
+                                onSave={handleSave}
+                            />
+                        )}
                     </div>
 
                     <div className="space-y-6 xl:col-span-1">

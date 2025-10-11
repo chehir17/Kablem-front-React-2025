@@ -3,27 +3,25 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
+import { ArticleService } from "../../services/ArticleService";
 
 interface Option {
-  value: string;
-  label: string;
+    value: string;
+    label: string;
+}
+
+interface Article {
+    id_article: number;
+    code_artc: string;
+    nom_artc: string;
+    type: string;
 }
 
 interface EditArticleModalProps {
     isOpen: boolean;
     onClose: () => void;
-    article: {
-        id: number;
-        code_article: string;
-        nom_article: string;
-        type: string;
-    } | null;
-    onSave: (updatedArticle: {
-        id: number;
-        code_article: string;
-        nom_article: string;
-        type: string;
-    }) => void;
+    article: Article | null;
+    onSave: (updatedArticle: Article) => void;
 }
 
 export default function EditArticleModal({
@@ -32,12 +30,14 @@ export default function EditArticleModal({
     article,
     onSave,
 }: EditArticleModalProps) {
-    const [formData, setFormData] = useState({
-        id: 0,
-        code_article: "",
-        nom_article: "",
+    const [formData, setFormData] = useState<Article>({
+        id_article: 0,
+        code_artc: "",
+        nom_artc: "",
         type: "",
     });
+
+    const [loading, setLoading] = useState(false);
 
     const typeOptions: Option[] = [
         { value: "Matiere Premiere", label: "Matiere Premiere" },
@@ -45,89 +45,104 @@ export default function EditArticleModal({
     ];
 
     useEffect(() => {
-        if (article) {
-            setFormData(article);
-        }
+        if (article) setFormData(article);
     }, [article]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Correction : le Select attend une fonction qui prend une string
     const handleSelectChange = (value: string) => {
         setFormData({ ...formData, type: value });
     };
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Article mis à jour :", formData);
-        onClose();
+    const handleSubmit = async () => {
+        if (!formData.code_artc || !formData.nom_artc || !formData.type) {
+            alert("Veuillez remplir tous les champs !");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const updated = await ArticleService.updateArticle(formData.id_article, formData);
+            console.log("✅ Article mis à jour :", updated);
+            onSave(updated);
+            swal({
+                title: "succès !",
+                text: " Article mis à jour !",
+                icon: "success",
+            })
+            onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de l'article !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const options = [
-        { value: "Matiere Premiere", label: "Matiere Premiere" },
-        { value: "Produit Final", label: "Produit Final" },
-    ];
-    
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
-            <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
-                <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+            <div className="relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
+                <h4 className="mb-4 text-2xl font-semibold text-gray-800 dark:text-white/90">
                     Modifier l'article
                 </h4>
 
-                <form className="flex flex-col">
-                    <div className="custom-scrollbar h-[350px] overflow-y-auto px-2 mb-0">
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="code_article">Code Article</Label>
-                                <Input
-                                    type="text"
-                                    id="code_article"
-                                    name="code_article"
-                                    value={formData.code_article}
-                                    onChange={handleChange}
-                                />
-                            </div>
-
-                            <div>
-                                <Label htmlFor="nom_article">Nom d'article</Label>
-                                <Input
-                                    type="text"
-                                    id="nom_article"
-                                    name="nom_article"
-                                    value={formData.nom_article}
-                                    onChange={handleChange}
-                                />
-                            </div>
-
-                            <div>
-                                <Label>Type</Label>
-                                <Select
-                                    options={options}
-                                    placeholder="Sélectionner un type"
-                                    onChange={handleSelectChange}
-                                    value={formData.type}
-                                />
-                            </div>
-                        </div>
+                <form className="flex flex-col space-y-4">
+                    <div>
+                        <Label htmlFor="code_artc">Code Article</Label>
+                        <Input
+                            type="text"
+                            id="code_artc"
+                            name="code_artc"
+                            value={formData.code_artc}
+                            onChange={handleChange}
+                        />
                     </div>
 
-                    <div className="flex items-center gap-3 px-2 mt-0 lg:justify-end">
+                    <div>
+                        <Label htmlFor="nom_artc">Nom d'article</Label>
+                        <Input
+                            type="text"
+                            id="nom_artc"
+                            name="nom_artc"
+                            value={formData.nom_artc}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    <div>
+                        <Label>Type</Label>
+                        <Select
+                            options={typeOptions}
+                            placeholder="Sélectionner un type"
+                            onChange={handleSelectChange}
+                            value={formData.type}
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-3 py-2 text-sm bg-gray-300 rounded hover:bg-gray-400"
+                            className="px-4 py-2 text-sm bg-gray-300 rounded hover:bg-gray-400"
+                            disabled={loading}
                         >
                             Annuler
                         </button>
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className="px-3 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-700"
+                            className={`px-4 py-2 text-sm text-white rounded ${loading ? "bg-blue-300" : "bg-blue-600 hover:bg-blue-700"
+                                }`}
+                            disabled={loading}
                         >
-                            Sauvegarder
+                            {loading ? "Sauvegarde..." : "Sauvegarder"}
                         </button>
                     </div>
                 </form>

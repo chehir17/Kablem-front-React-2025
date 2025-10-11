@@ -1,11 +1,15 @@
-import { Navigate } from "react-router-dom";
-import { isAuthenticated } from "../services/authService";
+import { Navigate, Outlet } from "react-router-dom";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  if (!isAuthenticated()) {
+export default function ProtectedRoute() {
+  // Vérifie s'il y a un token ou des infos utilisateur
+  const token = localStorage.getItem("token");
+  const userData = localStorage.getItem("userData");
+
+  // Si rien de tout ça → redirection vers login
+  if (!token || !userData) {
     return <Navigate to="/" replace />;
   }
-  return children;
-};
 
-export default ProtectedRoute;
+  // Sinon on laisse accéder aux routes enfants
+  return <Outlet />;
+}
