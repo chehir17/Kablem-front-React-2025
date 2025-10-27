@@ -7,12 +7,12 @@ import { useState } from "react";
 
 export default function MonthlyAuditChart() {
   const audits = {
-    DMPP: [12, 18, 25, 30, 20, 28, 22, 15, 19, 21, 26, 24],
+    suiviclient: [12, 18, 25, 30, 20, 28, 22, 15, 19, 21, 26, 24],
     Supercontrole: [8, 14, 10, 20, 15, 18, 25, 30, 28, 22, 19, 16],
     SuiviFournisseur: [5, 9, 12, 14, 18, 20, 22, 19, 25, 30, 28, 24],
   };
 
-  const [selectedAudit, setSelectedAudit] = useState<keyof typeof audits>("DMPP");
+  const [selectedAudit, setSelectedAudit] = useState<keyof typeof audits>("suiviclient");
   const [isOpen, setIsOpen] = useState(false);
 
   const options: ApexOptions = {

@@ -4,7 +4,6 @@ import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
 import Alerts from "./pages/UiElements/Alerts";
 import Calendar from "./pages/Calendar";
-import FormElements from "./pages/Forms/FormElements";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -16,7 +15,7 @@ import HistoriqueTache from "./pages/DataManagment/HistoriqueTaches";
 import Fournisseur from "./pages/DataManagment/Fournisseurs";
 import Client from "./pages/DataManagment/Clients";
 import Article from "./pages/DataManagment/Articles";
-import FichDMPP from "./pages/ToolsManagement/FichDMPP";
+import FichDMPP from "./pages/ToolsManagement/FicheDMPP";
 import RapportNonConformite from "./pages/ToolsManagement/RapportNonConfomite";
 import RegistreSCRAP from "./pages/ToolsManagement/RegistrSCRAP";
 import SuiviDefautClient from "./pages/ToolsManagement/SuiviDefautClient";
@@ -35,6 +34,7 @@ import AddSuiviSuperControleForm from "./components/SuiviSuperControle/AddSuiviS
 import ProtectedRoute from "./utils/ProtectedRoute";
 import AdminRoute from "./utils/AdminRoute";
 import Error500 from "./pages/OtherPage/Error500";
+import LotPage from "./pages/DataManagment/Lot";
 
 export default function App() {
   return (
@@ -53,8 +53,6 @@ export default function App() {
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />
 
-            {/* Forms */}
-            <Route path="/form-elements" element={<FormElements />} />
 
             {/* Ui Elements */}
             <Route path="/alerts" element={<Alerts />} />
@@ -68,6 +66,14 @@ export default function App() {
               element={
                 <AdminRoute>
                   <Article />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/lot"
+              element={
+                <AdminRoute>
+                  <LotPage />
                 </AdminRoute>
               }
             />

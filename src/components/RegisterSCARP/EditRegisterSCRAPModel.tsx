@@ -4,84 +4,22 @@ import Input from "../form/input/InputField";
 import Select from "../form/Select";
 import { Modal } from "../ui/modal";
 import DatePicker from "../form/date-picker";
+import { registreSCRAP } from "../../types/registreSCRAP";
+import { ArticleService } from "../../services/ArticleService";
+import { Ligne } from "../../types/Ligne";
+import { Article } from "../../types/Articles";
+import { LigneService } from "../../services/LigneService";
+import { UserService } from "../../services/UserService";
+import { LotService } from "../../services/LotService";
+import { Utilisateur } from "../../types/Utilisateur";
+import { Lot } from "../../types/Lot";
+import { SCRAPService } from "../../services/SCRAPService";
 
 interface EditRegisterSCRAPModelProps {
     isOpen: boolean;
     onClose: () => void;
-    registerscraps: {
-        id: number;
-        created_at: string;
-        compilateur: string
-        zone_affe_prob: string;
-        annulation: string;
-        desc_prob: string;
-        code_artc: string;
-        date_prod: Date;
-        first_name: string;
-        cout_unit: string;
-        machine: string;
-        mini: string;
-        nom_ligne: string;
-        table_elec: string;
-        qnt_produit: string;
-        qnt_scrap: string;
-        cause_prob: string;
-        classification_cause: string;
-        ac_immed_prend: string;
-        rebut_remplacer: string;
-        odl_rep: string;
-        new_odl: string;
-        Desc_acmo: string;
-        N_pecRec: string;
-        qnt_rebF: string;
-        h_interne: string;
-        h_externe: string;
-        cout_final: string;
-        res_pos: string;
-        ac_corr_suppl: string;
-        N_ac_corr_ex: string;
-        note: string;
-        poids_rebut: string;
-        valeur_scrap: string;
-        level: string;
-    } | null;
-    onSave: (updatedRegistscrap: {
-        id: number;
-        created_at: string;
-        compilateur: string
-        zone_affe_prob: string;
-        annulation: string;
-        desc_prob: string;
-        code_artc: string;
-        date_prod: Date;
-        first_name: string;
-        cout_unit: string;
-        machine: string;
-        mini: string;
-        nom_ligne: string;
-        table_elec: string;
-        qnt_produit: string;
-        qnt_scrap: string;
-        cause_prob: string;
-        classification_cause: string;
-        ac_immed_prend: string;
-        rebut_remplacer: string;
-        odl_rep: string;
-        new_odl: string;
-        Desc_acmo: string;
-        N_pecRec: string;
-        qnt_rebF: string;
-        h_interne: string;
-        h_externe: string;
-        cout_final: string;
-        res_pos: string;
-        ac_corr_suppl: string;
-        N_ac_corr_ex: string;
-        note: string;
-        poids_rebut: string;
-        valeur_scrap: string;
-        level: string;
-    }) => void;
+    registerscraps: registreSCRAP | null;
+    onSave: (updatedRegistscrap: registreSCRAP) => void;
 }
 
 export default function EditRegisterSCRAPModel({
@@ -92,30 +30,22 @@ export default function EditRegisterSCRAPModel({
 }: EditRegisterSCRAPModelProps) {
 
     const [formData, setFormData] = useState({
-        id: 0,
-        created_at: "",
-        compilateur: "",
+        id_scrap: 0,
         zone_affe_prob: "",
         annulation: "",
         desc_prob: "",
-        code_artc: "",
-        date_prod: new Date(""),
-        first_name: "",
         cout_unit: "",
         machine: "",
+        Desc_acmo: "",
         mini: "",
-        nom_ligne: "",
         table_elec: "",
-        qnt_produit: "",
         qnt_scrap: "",
+        valeur_scrap: "",
         cause_prob: "",
         classification_cause: "",
         ac_immed_prend: "",
         rebut_remplacer: "",
-        odl_rep: "",
-        new_odl: "",
-        Desc_acmo: "",
-        N_pecRec: "",
+        N_pecRec: 0,
         qnt_rebF: "",
         h_interne: "",
         h_externe: "",
@@ -125,8 +55,16 @@ export default function EditRegisterSCRAPModel({
         N_ac_corr_ex: "",
         note: "",
         poids_rebut: "",
-        valeur_scrap: "",
+        id_ligne: "",
+        compilateur: "",
+        id_lot: "",
+        date_production: new Date(),
+        id_article: "",
+        odl_rep: "",
+        new_odl: "",
         level: "",
+        oper_1: "",
+        created_at: new Date(),
 
     });
 
@@ -135,24 +73,79 @@ export default function EditRegisterSCRAPModel({
             setFormData(registerscraps);
         }
     }, [registerscraps]);
+    const [Lignes, setLignes] = useState<Ligne[]>([]);
+    const [Articles, setArticles] = useState<Article[]>([]);
+    const [Users, setUsers] = useState<Utilisateur[]>([]);
+    const [lots, setLots] = useState<Lot[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [errors, setErrors] = useState<any>({});
+
+    const fetchData = async () => {
+        try {
+            const [dataArticles, dataLignes, dataUsers, dataLots] = await Promise.all([
+                ArticleService.getArticles(),
+                LigneService.getLigne(),
+                UserService.getUsers(),
+                LotService.getLot(),
+            ]);
+            if (Array.isArray(dataArticles)) setArticles(dataArticles);
+            if (Array.isArray(dataUsers)) setUsers(dataUsers);
+            if (Array.isArray(dataLignes)) setLignes(dataLignes);
+            if (Array.isArray(dataLots)) setLots(dataLots);
+
+        } catch (err) {
+            console.error(err);
+            console.log("Erreur lors du chargement des données.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [])
+
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setFormData({ ...formData, [e.target.id]: e.target.value });
+        setErrors({ ...errors, [e.target.id]: "" });
     };
 
-    const handleSelectChange = (value: string) => {
-        setFormData({ ...formData, code_artc: value });
+    const handleSelectChange = (
+        option: { value: string; label: string } | string,
+        field: string
+    ) => {
+        const value = typeof option === "string" ? option : option?.value;
+        setFormData({ ...formData, [field]: value });
+        setErrors({ ...errors, [field]: "" });
     };
 
-    const optionsLigne = [
-        { value: "Ligne1", label: "Ligne 01" },
-        { value: "ligne2", label: "Ligne 02" },
-    ];
+    const handleSubmit = async () => {
+        console.log(formData)
+        try {
+            setLoading(true);
+            const updated = await SCRAPService.updateSCRAP(formData.id_scrap, formData);
+            console.log("registre scrap est mis à jour :", updated);
+            onSave(updated);
+            onClose();
+            swal({
+                title: "succès !",
+                text: "Le registre scrap est à jour !",
+                icon: "success",
+            })
 
-    const handleSubmit = () => {
-        onSave(formData);
-        console.log("Ligne mis à jour :", formData);
-        onClose();
+            window.location.reload();
+        } catch (error) {
+            swal({
+                title: "Erreur !",
+                text: "❌ Erreur lors de la mise à jour de registre scrap !",
+                icon: "error",
+            })
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const optionsZoneProb = [
@@ -174,21 +167,9 @@ export default function EditRegisterSCRAPModel({
         { value: "non", label: "Non" },
     ];
 
-    const optionsCompilateurs = [
-        { value: "mostfa", label: "Mostafa" },
-        { value: "hamadi", label: "Hamadi" },
-    ];
-
-    const optionsCodeArticle = [
-        { value: "ART-001", label: "Article 1" },
-        { value: "ART-002", label: "Article 2" },
-        { value: "ART-003", label: "Article 3" },
-        { value: "ART-004", label: "Article 4" },
-    ];
-
     const optionsLevel = [
-        { value: "High_level", label: "High Level" },
-        { value: "medium_level", label: "Medium Level" },
+        { value: "High Level", label: "High Level" },
+        { value: "Medium Level", label: "Medium Level" },
     ];
 
     return (
@@ -196,7 +177,7 @@ export default function EditRegisterSCRAPModel({
             <Modal isOpen={isOpen} onClose={onClose} className="max-w-[1250px] m-2 mt-70">
                 <div className="no-scrollbar relative w-full max-w-[1250px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
                     <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-                        Modifier Registre SCRAP N°{formData.id}
+                        Modifier Registre SCRAP N°{formData.id_scrap}
                     </h4>
                     <form className="flex flex-col">
                         <div className="custom-scrollbar h-auto overflow-y-auto px-2 mb-4">
@@ -204,29 +185,35 @@ export default function EditRegisterSCRAPModel({
                                 <div>
                                     <Label>compilateur</Label>
                                     <Select
-                                        options={optionsCompilateurs}
-                                        placeholder="Sélectionner un code"
-                                        onChange={handleSelectChange}
+                                        options={Users.length > 0
+                                            ? Users.map(dep => ({ value: String(dep.id_user), label: dep.first_name + ' ' + dep.last_name }))
+                                            : [{ value: "", label: "Aucun Utilisateur disponible" }]
+                                        }
+                                        placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                        onChange={(val) => handleSelectChange(val, "compilateur")}
                                         value={formData.compilateur}
                                     />
+                                    {errors.compilateur && <p className="text-red-500 text-sm">{errors.compilateur}</p>}
                                 </div>
                                 <div>
                                     <Label>Zone de probléme</Label>
                                     <Select
                                         options={optionsZoneProb}
-                                        placeholder="Sélectionner un code"
-                                        onChange={handleSelectChange}
+                                        placeholder="Sélectionner une zone"
+                                        onChange={(val) => handleSelectChange(val, "zone_affe_prob")}
                                         value={formData.zone_affe_prob}
                                     />
+                                    {errors.zone_affe_prob && <p className="text-red-500 text-sm">{errors.zone_affe_prob}</p>}
                                 </div>
                                 <div>
                                     <Label>Annulation</Label>
                                     <Select
                                         options={optionsAnnulation}
                                         placeholder="Sélectionner un code"
-                                        onChange={handleSelectChange}
+                                        onChange={(val) => handleSelectChange(val, "annulation")}
                                         value={formData.annulation}
                                     />
+                                    {errors.annulation && <p className="text-red-500 text-sm">{errors.annulation}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="desc_prob">description de probléme</Label>
@@ -234,41 +221,53 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="desc_prob"
                                         name="desc_prob"
-                                        value={formData.desc_prob}
+                                        error={!!errors.desc_prob}
+                                        success={!!formData.desc_prob}
                                         onChange={handleChange}
+                                        value={formData.desc_prob}
                                     />
+                                    {errors.desc_prob && <p className="text-red-500 text-sm">{errors.desc_prob}</p>}
                                 </div>
                                 <div className="">
                                     <DatePicker
-                                        id="date_prod"
-                                        label="Date produit"
-                                        placeholder="Select a date"
-                                        onChange={(dates,) => {
+                                        id="date_production"
+                                        label="Date de production "
+                                        placeholder="Sélectionner une date"
+                                        onChange={(dates) => {
                                             const selectedDate = Array.isArray(dates) ? dates[0] : dates;
-                                            setFormData({
-                                                ...formData,
-                                                date_prod: selectedDate || new Date(),
-                                            });
+                                            setFormData((prev: any) => ({
+                                                ...prev,
+                                                date_production: selectedDate ? selectedDate.toISOString().split("T")[0] : "",
+                                            }));
                                         }}
                                     />
+                                    {errors.date_production && <p className="text-red-500 text-sm">{errors.date_production}</p>}
                                 </div>
                                 <div>
                                     <Label>Code Produit</Label>
                                     <Select
-                                        options={optionsCodeArticle}
-                                        placeholder="Sélectionner un code"
-                                        onChange={handleSelectChange}
-                                        value={formData.code_artc}
+                                        options={Articles.length > 0
+                                            ? Articles.map(dep => ({ value: String(dep.id_article), label: dep.code_artc }))
+                                            : [{ value: "", label: "Aucun article disponible" }]
+                                        }
+                                        placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                        onChange={(val) => handleSelectChange(val, "id_article")}
+                                        value={formData.id_article}
                                     />
+                                    {errors.id_article && <p className="text-red-500 text-sm">{errors.id_article}</p>}
                                 </div>
                                 <div>
                                     <Label>Opérateure 1</Label>
                                     <Select
-                                        options={optionsCompilateurs}
-                                        placeholder="Sélectionner un Opérateure"
-                                        onChange={handleSelectChange}
-                                        value={formData.first_name}
+                                        options={Users.length > 0
+                                            ? Users.map(dep => ({ value: String(dep.id_user), label: dep.first_name + ' ' + dep.last_name }))
+                                            : [{ value: "", label: "Aucun utilisateur disponible" }]
+                                        }
+                                        placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                        onChange={(val) => handleSelectChange(val, "oper_1")}
+                                        value={formData.oper_1}
                                     />
+                                    {errors.oper_1 && <p className="text-red-500 text-sm">{errors.oper_1}</p>}
                                 </div>
                                 <div>
                                     <Label>Coùt unitaire </Label>
@@ -276,9 +275,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="cout_unit"
                                         name="cout_unit"
-                                        value={formData.cout_unit}
+                                        error={!!errors.cout_unit}
+                                        success={!!formData.cout_unit}
                                         onChange={handleChange}
+                                        value={formData.cout_unit}
                                     />
+                                    {errors.cout_unit && <p className="text-red-500 text-sm">{errors.cout_unit}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="machine">Machine</Label>
@@ -286,9 +288,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="machine"
                                         name="machine"
-                                        value={formData.machine}
+                                        error={!!errors.machine}
+                                        success={!!formData.machine}
                                         onChange={handleChange}
+                                        value={formData.machine}
                                     />
+                                    {errors.machine && <p className="text-red-500 text-sm">{errors.machine}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="mini">Mini</Label>
@@ -296,19 +301,25 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="mini"
                                         name="mini"
-                                        value={formData.mini}
+                                        error={!!errors.mini}
+                                        success={!!formData.mini}
                                         onChange={handleChange}
+                                        value={formData.mini}
                                     />
+                                    {errors.mini && <p className="text-red-500 text-sm">{errors.mini}</p>}
                                 </div>
                                 <div>
                                     <Label>ligne d'assamblage</Label>
                                     <Select
-                                        options={optionsLigne}
-                                        placeholder="Sélectionner un Ligne"
-                                        onChange={handleSelectChange}
-                                        value={formData.nom_ligne}
-
+                                        options={Lignes.length > 0
+                                            ? Lignes.map(dep => ({ value: String(dep.id_ligne), label: dep.nom_ligne }))
+                                            : [{ value: "", label: "Aucun lignes disponible" }]
+                                        }
+                                        placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                        onChange={(val) => handleSelectChange(val, "id_ligne")}
+                                        value={formData.id_ligne}
                                     />
+                                    {errors.id_ligne && <p className="text-red-500 text-sm">{errors.id_ligne}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="table_elec">Table éléctrique </Label>
@@ -316,19 +327,25 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="table_elec"
                                         name="table_elec"
-                                        value={formData.table_elec}
+                                        error={!!errors.table_elec}
+                                        success={!!formData.table_elec}
                                         onChange={handleChange}
+                                        value={formData.table_elec}
                                     />
+                                    {errors.table_elec && <p className="text-red-500 text-sm">{errors.table_elec}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor="qnt_produit">Quantité au lot </Label>
-                                    <Input
-                                        type="number"
-                                        id="qnt_produit"
-                                        name="qnt_produit"
-                                        value={formData.qnt_produit}
-                                        onChange={handleChange}
+                                    <Label htmlFor="qnt_lot">Quantité au lot </Label>
+                                    <Select
+                                        options={lots.length > 0
+                                            ? lots.map(dep => ({ value: String(dep.id_lot), label: dep.num_lot }))
+                                            : [{ value: "", label: "Aucun lot disponible" }]
+                                        }
+                                        placeholder={loading ? "Chargement..." : "Sélectionner"}
+                                        onChange={(val) => handleSelectChange(val, "id_lot")}
+                                        value={formData.id_lot}
                                     />
+                                    {errors.id_lot && <p className="text-red-500 text-sm">{errors.id_lot}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="qnt_scrap">Quantité de scrap</Label>
@@ -336,9 +353,12 @@ export default function EditRegisterSCRAPModel({
                                         type="number"
                                         id="qnt_scrap"
                                         name="qnt_scrap"
-                                        value={formData.qnt_scrap}
+                                        error={!!errors.qnt_scrap}
+                                        success={!!formData.qnt_scrap}
                                         onChange={handleChange}
+                                        value={formData.qnt_scrap}
                                     />
+                                    {errors.qnt_scrap && <p className="text-red-500 text-sm">{errors.qnt_scrap}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="cause_prob">Cause probléme</Label>
@@ -346,9 +366,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="cause_prob"
                                         name="cause_prob"
-                                        value={formData.cause_prob}
+                                        error={!!errors.cause_prob}
+                                        success={!!formData.cause_prob}
                                         onChange={handleChange}
+                                        value={formData.cause_prob}
                                     />
+                                    {errors.cause_prob && <p className="text-red-500 text-sm">{errors.cause_prob}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="classification_cause">Classification de la root cause</Label>
@@ -356,9 +379,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="classification_cause"
                                         name="classification_cause"
-                                        value={formData.classification_cause}
+                                        error={!!errors.classification_cause}
+                                        success={!!formData.classification_cause}
                                         onChange={handleChange}
+                                        value={formData.classification_cause}
                                     />
+                                    {errors.classification_cause && <p className="text-red-500 text-sm">{errors.classification_cause}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="ac_immed_prend">Action immédiate a prendre</Label>
@@ -366,9 +392,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="ac_immed_prend"
                                         name="ac_immed_prend"
-                                        value={formData.ac_immed_prend}
+                                        error={!!errors.ac_immed_prend}
+                                        success={!!formData.ac_immed_prend}
                                         onChange={handleChange}
+                                        value={formData.ac_immed_prend}
                                     />
+                                    {errors.ac_immed_prend && <p className="text-red-500 text-sm">{errors.ac_immed_prend}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="rebut_remplacer">remplcement rebut</Label>
@@ -376,9 +405,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="rebut_remplacer"
                                         name="rebut_remplacer"
-                                        value={formData.rebut_remplacer}
+                                        error={!!errors.rebut_remplacer}
+                                        success={!!formData.rebut_remplacer}
                                         onChange={handleChange}
+                                        value={formData.rebut_remplacer}
                                     />
+                                    {errors.rebut_remplacer && <p className="text-red-500 text-sm">{errors.rebut_remplacer}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="odl_rep">ODL à relancer par la logistique</Label>
@@ -386,9 +418,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="odl_rep"
                                         name="odl_rep"
-                                        value={formData.odl_rep}
+                                        error={!!errors.odl_rep}
+                                        success={!!formData.odl_rep}
                                         onChange={handleChange}
+                                        value={formData.odl_rep}
                                     />
+                                    {errors.odl_rep && <p className="text-red-500 text-sm">{errors.odl_rep}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="new_odl">Nouvelle ODL</Label>
@@ -396,9 +431,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="new_odl"
                                         name="new_odl"
-                                        value={formData.new_odl}
+                                        error={!!errors.new_odl}
+                                        success={!!formData.new_odl}
                                         onChange={handleChange}
+                                        value={formData.new_odl}
                                     />
+                                    {errors.new_odl && <p className="text-red-500 text-sm">{errors.new_odl}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="Desc_acmo">Description de l'action mise en œuvre</Label>
@@ -406,19 +444,25 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="Desc_acmo"
                                         name="Desc_acmo"
-                                        value={formData.Desc_acmo}
+                                        error={!!errors.Desc_acmo}
+                                        success={!!formData.Desc_acmo}
                                         onChange={handleChange}
+                                        value={formData.Desc_acmo}
                                     />
+                                    {errors.Desc_acmo && <p className="text-red-500 text-sm">{errors.Desc_acmo}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="N_pecRec">Nombre des pièces récupérées </Label>
                                     <Input
-                                        type="text"
+                                        type="number"
                                         id="N_pecRec"
                                         name="N_pecRec"
-                                        value={formData.N_pecRec}
+                                        error={!!errors.N_pecRec}
+                                        success={!!formData.N_pecRec}
                                         onChange={handleChange}
+                                        value={formData.N_pecRec}
                                     />
+                                    {errors.N_pecRec && <p className="text-red-500 text-sm">{errors.N_pecRec}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="qnt_rebF">Quantité rebuté final</Label>
@@ -426,9 +470,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="qnt_rebF"
                                         name="qnt_rebF"
-                                        value={formData.qnt_rebF}
+                                        error={!!errors.qnt_rebF}
+                                        success={!!formData.qnt_rebF}
                                         onChange={handleChange}
+                                        value={formData.qnt_rebF}
                                     />
+                                    {errors.qnt_rebF && <p className="text-red-500 text-sm">{errors.qnt_rebF}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="h_interne">Heur interne dépenser pour rework</Label>
@@ -436,9 +483,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="h_interne"
                                         name="h_interne"
-                                        value={formData.h_interne}
+                                        error={!!errors.h_interne}
+                                        success={!!formData.h_interne}
                                         onChange={handleChange}
+                                        value={formData.h_interne}
                                     />
+                                    {errors.h_interne && <p className="text-red-500 text-sm">{errors.h_interne}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="h_externe">heur externe dépensé</Label>
@@ -446,9 +496,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="h_externe"
                                         name="h_externe"
-                                        value={formData.h_externe}
+                                        error={!!errors.h_externe}
+                                        success={!!formData.h_externe}
                                         onChange={handleChange}
+                                        value={formData.h_externe}
                                     />
+                                    {errors.h_externe && <p className="text-red-500 text-sm">{errors.h_externe}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="cout_final">Coùt final</Label>
@@ -456,9 +509,12 @@ export default function EditRegisterSCRAPModel({
                                         type="number"
                                         id="cout_final"
                                         name="cout_final"
-                                        value={formData.cout_final}
+                                        error={!!errors.cout_final}
+                                        success={!!formData.cout_final}
                                         onChange={handleChange}
+                                        value={formData.cout_final}
                                     />
+                                    {errors.cout_final && <p className="text-red-500 text-sm">{errors.cout_final}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="res_pos">Résulat positif de tri</Label>
@@ -466,9 +522,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="res_pos"
                                         name="res_pos"
-                                        value={formData.res_pos}
+                                        error={!!errors.res_pos}
+                                        success={!!formData.res_pos}
                                         onChange={handleChange}
+                                        value={formData.res_pos}
                                     />
+                                    {errors.res_pos && <p className="text-red-500 text-sm">{errors.res_pos}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="ac_corr_suppl">Actions correctives supplémentaires</Label>
@@ -476,9 +535,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="ac_corr_suppl"
                                         name="ac_corr_suppl"
-                                        value={formData.ac_corr_suppl}
+                                        error={!!errors.ac_corr_suppl}
+                                        success={!!formData.ac_corr_suppl}
                                         onChange={handleChange}
+                                        value={formData.ac_corr_suppl}
                                     />
+                                    {errors.ac_corr_suppl && <p className="text-red-500 text-sm">{errors.ac_corr_suppl}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="N_ac_corr_ex">N° actions correctives externes</Label>
@@ -486,9 +548,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="N_ac_corr_ex"
                                         name="N_ac_corr_ex"
-                                        value={formData.N_ac_corr_ex}
+                                        error={!!errors.N_ac_corr_ex}
+                                        success={!!formData.N_ac_corr_ex}
                                         onChange={handleChange}
+                                        value={formData.N_ac_corr_ex}
                                     />
+                                    {errors.N_ac_corr_ex && <p className="text-red-500 text-sm">{errors.N_ac_corr_ex}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="poids_rebut">Poids de rebut</Label>
@@ -496,9 +561,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="poids_rebut"
                                         name="poids_rebut"
-                                        value={formData.poids_rebut}
+                                        error={!!errors.poids_rebut}
+                                        success={!!formData.poids_rebut}
                                         onChange={handleChange}
+                                        value={formData.poids_rebut}
                                     />
+                                    {errors.poids_rebut && <p className="text-red-500 text-sm">{errors.poids_rebut}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="valeur_scrap">Valeur scrap</Label>
@@ -506,9 +574,12 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="valeur_scrap"
                                         name="valeur_scrap"
-                                        value={formData.valeur_scrap}
+                                        error={!!errors.valeur_scrap}
+                                        success={!!formData.valeur_scrap}
                                         onChange={handleChange}
+                                        value={formData.valeur_scrap}
                                     />
+                                    {errors.valeur_scrap && <p className="text-red-500 text-sm">{errors.valeur_scrap}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="note">Note</Label>
@@ -516,40 +587,46 @@ export default function EditRegisterSCRAPModel({
                                         type="text"
                                         id="note"
                                         name="note"
-                                        value={formData.note}
+                                        error={!!errors.note}
+                                        success={!!formData.note}
                                         onChange={handleChange}
+                                        value={formData.note}
                                     />
+                                    {errors.note && <p className="text-red-500 text-sm">{errors.note}</p>}
                                 </div>
                                 <div>
                                     <Label>Level</Label>
                                     <Select
                                         options={optionsLevel}
-                                        placeholder="Sélectionner un Ligne"
-                                        onChange={handleSelectChange}
+                                        placeholder="Sélectionner un niveau"
+                                        onChange={(val) => handleSelectChange(val, "level")}
                                         value={formData.level}
                                     />
+                                    {errors.level && <p className="text-red-500 text-sm">{errors.level}</p>}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 px-2 mt-0 lg:justify-end">
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="px-3 py-2 text-sm bg-gray-300 rounded hover:bg-gray-400"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    className="px-3 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-700"
-                                >
-                                    Sauvegarder
-                                </button>
-                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-2 mt-0 lg:justify-end">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-3 py-2 text-sm bg-gray-300 rounded hover:bg-gray-400"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                className={`px-6 py-2 text-sm text-white rounded-lg shadow-md transition ${loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                                    }`}
+                                disabled={loading}
+                            >
+                                {loading ? "⏳ Enregistrement..." : "Sauvegarder"}
+                            </button>
                         </div>
                     </form>
                 </div>
-            </Modal>
-        </div>
+            </Modal >
+        </div >
     );
 }

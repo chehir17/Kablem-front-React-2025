@@ -2,16 +2,16 @@ import { useState } from "react";
 import { Modal } from "../components/ui/modal";
 
 type ModalPreviewProps = {
-  label: string;
-  title: string; 
-  content: string; 
-  maxLength?: number; 
+  label?: string;
+  title: string;
+  content?: string;
+  maxLength?: number;
 };
 
 export default function ModalPreview({
-  label,
+  label = "",     
   title,
-  content,
+  content = "",     
   maxLength = 20,
 }: ModalPreviewProps) {
   const [openModal, setOpenModal] = useState(false);
@@ -34,7 +34,7 @@ export default function ModalPreview({
           <h4 className="text-lg font-semibold mb-2 dark:text-gray-200">
             {title}
           </h4>
-          <p className="dark:text-gray-200">{content}</p>
+          <p className="dark:text-gray-200">{content || "Aucune donnée disponible."}</p>
           <button
             onClick={() => setOpenModal(false)}
             className="mt-4 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"

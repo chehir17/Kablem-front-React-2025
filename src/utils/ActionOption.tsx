@@ -8,9 +8,10 @@ interface ActionOption {
 
 interface ActionMenuProps {
   options: ActionOption[];
+  hidden?: boolean; 
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ options }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ options, hidden = false }) => {
   const [open, setOpenMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -32,6 +33,8 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ options }) => {
     if (open) document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, [open]);
+
+  if (hidden) return null;
 
   return (
     <div className="relative inline-block text-left">

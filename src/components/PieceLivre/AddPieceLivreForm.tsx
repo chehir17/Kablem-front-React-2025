@@ -152,7 +152,9 @@ export default function AddPieceLivreForm() {
                         </div>
                         <div>
                             <Label htmlFor="p1_p2">Piéce livré P1_P2</Label>
-                            <Input type="number" id="p1_p2" placeholder=""
+                            <Input
+                                type="number"
+                                id="p1_p2"
                                 onChange={handleChange}
                                 error={!!errors.p1_p2}
                                 success={!!formData.p1_p2}
@@ -161,7 +163,9 @@ export default function AddPieceLivreForm() {
                         </div>
                         <div>
                             <Label htmlFor="p3">Piéce livré P3</Label>
-                            <Input type="number" id="p3"
+                            <Input
+                                type="number"
+                                id="p3"
                                 onChange={handleChange}
                                 error={!!errors.p3}
                                 success={!!formData.p3}
@@ -181,16 +185,16 @@ export default function AddPieceLivreForm() {
                             {errors.id_fournisseur && <p className="text-red-500 text-sm">{errors.id_fournisseur}</p>}
                         </div>
                     </div>
-                        <div>
-                            <Label>Mois</Label>
-                            <Select
-                                options={options}
-                                placeholder="Selecter une mois"
-                                onChange={(val) => handleSelectChange(val, "month")}
-                                className="dark:bg-dark-900"
-                            />
-                            {errors.month && <p className="text-red-500 text-sm">{errors.month}</p>}
-                        </div>
+                    <div>
+                        <Label>Mois</Label>
+                        <Select
+                            options={options}
+                            placeholder="Selecter une mois"
+                            onChange={(val) => handleSelectChange(val, "month")}
+                            className="dark:bg-dark-900"
+                        />
+                        {errors.month && <p className="text-red-500 text-sm">{errors.month}</p>}
+                    </div>
                     <div className="flex items-center justify-center mt-6">
                         <button
                             type="button"

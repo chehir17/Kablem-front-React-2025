@@ -7,12 +7,30 @@ import { EventInput, DateSelectArg, EventClickArg } from "@fullcalendar/core";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
+import { EventService } from "../services/EventService";
 
 interface CalendarEvent extends EventInput {
   extendedProps: {
     calendar: string;
   };
 }
+
+// Fonction utilitaire pour corriger le décalage de date
+const normalizeDateForInput = (dateString: string): string => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  // Compensation du décalage de fuseau horaire
+  const normalizedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+  return normalizedDate.toISOString().split('T')[0];
+};
+
+// Fonction pour ajuster la date de fin pour FullCalendar (ajouter 1 jour)
+const adjustEndDateForCalendar = (endDate: string): string => {
+  if (!endDate) return "";
+  const date = new Date(endDate);
+  date.setDate(date.getDate() + 1); // Ajouter 1 jour pour l'affichage
+  return date.toISOString().split('T')[0];
+};
 
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
@@ -34,34 +52,30 @@ const Calendar: React.FC = () => {
   };
 
   useEffect(() => {
-    // Initialize with some events
-    setEvents([
-      {
-        id: "1",
-        title: "Event Conf.",
-        start: new Date().toISOString().split("T")[0],
-        extendedProps: { calendar: "Danger" },
-      },
-      {
-        id: "2",
-        title: "Meeting",
-        start: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Success" },
-      },
-      {
-        id: "3",
-        title: "Workshop",
-        start: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-        end: new Date(Date.now() + 259200000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Primary" },
-      },
-    ]);
+    const fetchEvents = async () => {
+      try {
+        const data = await EventService.getAll();
+        setEvents(
+          data.map((event: any) => ({
+            id: event.id,
+            title: event.title,
+            start: event.start_date,
+            end: adjustEndDateForCalendar(event.end_date), // Ajuster pour l'affichage
+            extendedProps: { calendar: event.level },
+          }))
+        );
+      } catch (error) {
+        console.error("Erreur de chargement des événements :", error);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     resetModalFields();
-    setEventStartDate(selectInfo.startStr);
-    setEventEndDate(selectInfo.endStr || selectInfo.startStr);
+    setEventStartDate(normalizeDateForInput(selectInfo.startStr));
+    setEventEndDate(normalizeDateForInput(selectInfo.endStr || selectInfo.startStr));
     openModal();
   };
 
@@ -69,40 +83,43 @@ const Calendar: React.FC = () => {
     const event = clickInfo.event;
     setSelectedEvent(event as unknown as CalendarEvent);
     setEventTitle(event.title);
-    setEventStartDate(event.start?.toISOString().split("T")[0] || "");
-    setEventEndDate(event.end?.toISOString().split("T")[0] || "");
+    
+    // Utiliser la fonction de normalisation pour corriger le décalage
+    const startDate = event.start ? normalizeDateForInput(event.start.toISOString()) : "";
+    const endDate = event.end ? normalizeDateForInput(event.end.toISOString()) : "";
+    
+    setEventStartDate(startDate);
+    setEventEndDate(endDate);
     setEventLevel(event.extendedProps.calendar);
     openModal();
   };
 
-  const handleAddOrUpdateEvent = () => {
-    if (selectedEvent) {
-      // Update existing event
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === selectedEvent.id
-            ? {
-                ...event,
-                title: eventTitle,
-                start: eventStartDate,
-                end: eventEndDate,
-                extendedProps: { calendar: eventLevel },
-              }
-            : event
-        )
-      );
-    } else {
-      // Add new event
-      const newEvent: CalendarEvent = {
-        id: Date.now().toString(),
-        title: eventTitle,
-        start: eventStartDate,
-        end: eventEndDate,
-        allDay: true,
-        extendedProps: { calendar: eventLevel },
-      };
-      setEvents((prevEvents) => [...prevEvents, newEvent]);
+  const handleAddOrUpdateEvent = async () => {
+    const eventData = {
+      title: eventTitle,
+      start_date: eventStartDate,
+      end_date: eventEndDate,
+      level: eventLevel || "Primary",
+    };
+
+    console.log(eventData);
+
+    try {
+      const newEvent = await EventService.create(eventData);
+      setEvents((prev) => [
+        ...prev,
+        {
+          id: newEvent.id,
+          title: newEvent.title,
+          start: newEvent.start_date,
+          end: adjustEndDateForCalendar(newEvent.end_date), // Ajuster pour l'affichage
+          extendedProps: { calendar: newEvent.level },
+        },
+      ]);
+    } catch (error) {
+      console.error("Erreur lors de la création de l'événement :", error);
     }
+
     closeModal();
     resetModalFields();
   };
@@ -118,8 +135,8 @@ const Calendar: React.FC = () => {
   return (
     <>
       <PageMeta
-        title="React.js Calendar Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Calendar Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="Calendar"
+        description="Ajouter des événements à votre calendrier"
       />
       <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="custom-calendar">
@@ -201,9 +218,8 @@ const Calendar: React.FC = () => {
                             />
                             <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 rounded-full box dark:border-gray-700">
                               <span
-                                className={`h-2 w-2 rounded-full bg-white ${
-                                  eventLevel === key ? "block" : "hidden"
-                                }`}
+                                className={`h-2 w-2 rounded-full bg-white ${eventLevel === key ? "block" : "hidden"
+                                  }`}
                               ></span>
                             </span>
                           </span>
@@ -260,6 +276,23 @@ const Calendar: React.FC = () => {
               >
                 {selectedEvent ? "Update Changes" : "Add Event"}
               </button>
+              {selectedEvent && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await EventService.delete(Number(selectedEvent.id));
+                      setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+                      closeModal();
+                       window.location.reload();
+                    } catch (error) {
+                      console.error("Erreur de suppression :", error);
+                    }
+                  }}
+                  className="btn btn-danger bg-red-500 text-white px-4 py-2 rounded"
+                >
+                  Supprimer
+                </button>
+              )}
             </div>
           </div>
         </Modal>

@@ -133,7 +133,7 @@ export default function Clients() {
         },
     ];
 
-    if (loading) return <p className="p-4 text-center">⏳ Chargement des Clients...</p>;
+    if (loading) return <p className="p-4 text-center dark:text-white/70">⏳ Chargement des Clients...</p>;
     if (error) return <p className="p-4 text-center text-red-600">{error}</p>;
 
     return (

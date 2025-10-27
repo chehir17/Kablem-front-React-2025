@@ -7,6 +7,7 @@ import {
     Legend,
 } from "chart.js";
 import DownloadChart from "../../utils/DownloadChartProps ";
+import axios from "axios";
 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -14,55 +15,67 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 export default function TauxActionRetard() {
     const [dataDoughnut, setDataDoughnut] = useState<any>(null);
     const chartRef = useRef<any>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+
+
 
     useEffect(() => {
-        // 🔹 Dummy data
-        const dummyAction = {
-            done: 45,
-            retard: 30,
-            notDone: 25,
-        };
+        const fetchActionEnretard = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get('http://localhost:8000/api/actionOnRetard');
+                const cnqData = response.data;
 
-        setDataDoughnut({
-            labels: [
-                `En retard ${dummyAction.retard}%`,
-                `Done ${dummyAction.done}%`,
-                `Non clôturées ${dummyAction.notDone}%`,
-            ],
-            datasets: [
-                {
-                    data: [dummyAction.retard, dummyAction.done, dummyAction.notDone],
-                    backgroundColor: ["#fe7c96", "#46BFBD", "#0275d8"],
-                    hoverBackgroundColor: ["#f06292", "#1fdbbf", "#0275d8"],
-                    borderWidth: 1,
-                },
-            ],
-        });
+                const done = cnqData[0];
+                const notDone = cnqData[1];
+                const retard = cnqData[2];
+
+                setDataDoughnut({
+                    labels: [
+                        `En retard ${retard}%`,
+                        `Done ${done}%`,
+                        `Non clôturées ${notDone}%`,
+                    ],
+                    datasets: [
+                        {
+                            data: [retard, done, notDone],
+                            backgroundColor: ["#fe7c96", "#46BFBD", "#0275d8"],
+                            hoverBackgroundColor: ["#f06292", "#1fdbbf", "#0275d8"],
+                            borderWidth: 1,
+                        },
+                    ],
+                });
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données En retard", error);
+
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchActionEnretard();
     }, []);
 
-    // const downloadPNG = () => {
-    //     if (chartRef.current) {
-    //         const chartInstance = chartRef.current;
-    //         const url = chartInstance.toBase64Image();
-    //         const link = document.createElement("a");
-    //         link.href = url;
-    //         link.download = "taux_actions.png";
-    //         link.click();
-    //     }
-    // };
 
     if (!dataDoughnut)
         return (
-            <p className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5">
-                Chargement du graphique...
-            </p>
+            <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+                <div className="animate-pulse">
+                    <div className="h-10 bg-gray-300 rounded mb-4"></div>
+                    <div className="h-80 w-80 items-center bg-gray-300 rounded-full"></div>
+                    <div className="mt-5">
+                        <div className="h-5 bg-gray-300 rounded mb-2"></div>
+                        <div className="h-5 bg-gray-300 rounded mb-2"></div>
+                        <div className="h-5 bg-gray-300 rounded mb-2"></div>
+                    </div>
+                </div>
+            </div>
         );
 
     return (
         <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
 
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-200"> Taux des actions</h3>
+                <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-200">Taux des actions</h3>
                 <div className="flex gap-2">
                     <DownloadChart
                         chartRef={chartRef}
@@ -77,7 +90,7 @@ export default function TauxActionRetard() {
                 </div>
             </div>
 
-            <div className="h-80 mx-auto">
+            <div className="h-80 w-80 mx-auto">
                 <Doughnut
                     ref={chartRef}
                     data={dataDoughnut}

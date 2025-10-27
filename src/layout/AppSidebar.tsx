@@ -8,15 +8,9 @@ import {
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  PageIcon,
-  PieChartIcon,
-  PlugInIcon,
-  TableIcon,
-  UserCircleIcon,
   FileIcon,
   GroupIcon,
   ToolsManagement
-  
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -44,6 +38,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Utilisateurs", path: "/utilisateurs", pro: false },
       { name: "Articles", path: "/articles", pro: false },
+      { name: "Lots", path: "/lot", pro: false },
       { name: "Clients", path: "/clients", pro: false },
       { name: "Fournisseurs", path: "/fournisseurs", pro: false },
       { name: "Lignes", path: "/lignes", pro: false },
@@ -67,11 +62,6 @@ const navItems: NavItem[] = [
     icon: <CalenderIcon />,
     name: "Calendar",
     path: "/calendar",
-  },
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
   },
 ];
 
@@ -98,6 +88,33 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  //get user data
+  const getConnectedUserdata = () => {
+    const userData = localStorage.getItem("userData");
+    const storedUser = userData ? JSON.parse(userData) : null;
+    console.log("Utilisateur trouvé :", storedUser);
+    return storedUser;
+  };
+
+  const [user, setUser] = useState<any>(null);
+  const [showDataManagement, setShowDataManagement] = useState(true);
+
+  useEffect(() => {
+    const userData = getConnectedUserdata();
+    setUser(userData);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Cacher "Gestion des données" si l'utilisateur est "user" ou "agent_qualite"
+    if (user.role === "user" || user.role === "agent_qualite") {
+      setShowDataManagement(false);
+    } else {
+      setShowDataManagement(true);
+    }
+  }, [user]);
+
   // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
     (path: string) => location.pathname === path,
@@ -107,7 +124,7 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+      const items = menuType === "main" ? getFilteredNavItems() : othersItems;
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -126,7 +143,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, showDataManagement]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -150,6 +167,17 @@ const AppSidebar: React.FC = () => {
         return null;
       }
       return { type: menuType, index };
+    });
+  };
+
+  // Fonction pour filtrer les éléments de navigation selon le rôle de l'utilisateur
+  const getFilteredNavItems = () => {
+    return navItems.filter(item => {
+      // Si c'est "Gestion des données" et l'utilisateur n'a pas les droits, on le cache
+      if (item.name === "Gestion des données" && !showDataManagement) {
+        return false;
+      }
+      return true;
     });
   };
 
@@ -329,7 +357,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(getFilteredNavItems(), "main")}
             </div>
             {/* <div className="">
               <h2

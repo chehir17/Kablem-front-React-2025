@@ -34,7 +34,7 @@ export default function ArticlePage() {
                     setArticles(data);
                 } else {
                     console.error("⚠️ La réponse n'est pas un tableau :", data);
-                    setArticles([]); // éviter les crash
+                    setArticles([]);
                 }
             } catch (err) {
                 setError("❌ Impossible de charger les articles.");
@@ -121,7 +121,7 @@ export default function ArticlePage() {
         },
     ];
 
-    if (loading) return <p className="p-4 text-center">⏳ Chargement des articles...</p>;
+    if (loading) return <p className="p-4 text-center dark:text-white/70">⏳ Chargement des articles...</p>;
     if (error) return <p className="p-4 text-center text-red-600">{error}</p>;
 
     return (

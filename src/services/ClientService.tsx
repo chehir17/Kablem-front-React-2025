@@ -16,7 +16,7 @@ export const ClientService = {
             const response = await axios.post(API_URL + '/client', data);
             return response.data;
         } catch (error: any) {
-            console.error("❌ Erreur lors de la création du client:", error);
+            console.error(" Erreur lors de la création du client:", error);
             throw error;
         }
     },

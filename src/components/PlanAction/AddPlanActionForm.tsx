@@ -13,12 +13,13 @@ import { UserService } from "../../services/UserService";
 import { Utilisateur } from "../../types/Utilisateur";
 import { DepartementService } from "../../services/DepartementService";
 import { PlanActionService } from "../../services/PlanActionService";
+import { validateForm } from "./Validation";
 
 
 export default function AddPlanActionForm() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState<any>({
-        id_departement: "",
+        nom_departement: "",
         zone: "",
         origine: "",
         prob: "",
@@ -26,12 +27,12 @@ export default function AddPlanActionForm() {
         support: "",
         date_debut: "",
         date_cloture: "",
-        status: "",
+        status: "open",
         action: "",
         responsable: "",
         editeur: "",
         contol_effic: "",
-        progress: "",
+        progress: 0,
         annul: "",
         level: "",
         note: "",
@@ -48,7 +49,7 @@ export default function AddPlanActionForm() {
     const [user, setUser] = useState<Utilisateur[]>([]);
     const [AdminPermission, setAdminPermission] = useState(false);
     const [departementError, setDepartementError] = useState<any>({});
-    const { id, type } = useParams(); // ✅ récupère depuis l’URL
+    const { id, type } = useParams();
     const [planData, setPlanData] = useState({
         id_rapportnc: "",
         id_scrap: "",
@@ -104,7 +105,6 @@ export default function AddPlanActionForm() {
             }
         }
 
-        // ✅ définit la source en fonction du type
         const newData: any = {};
         switch (type) {
             case "nc":
@@ -130,10 +130,18 @@ export default function AddPlanActionForm() {
         }
         setPlanData((prev) => ({ ...prev, ...newData }));
 
-        //fetch departemnts:
         fetchDepartements();
-        //fetch users
         fetchUsers();
+
+
+        if (!storedUser || !storedUser.id_user) {
+            swal({
+                title: "Erreur utilisateur",
+                text: "Impossible d'identifier l'utilisateur connecté.",
+                icon: "error",
+            });
+            return;
+        }
     }, [id, type]);
 
     const handleSelectChange = (
@@ -155,16 +163,9 @@ export default function AddPlanActionForm() {
         { value: "non", label: "Non" },
     ];
 
-    const status = [
-        { value: "open", label: "Open" },
-        { value: "in progress", label: "In Progress" },
-        { value: "done", label: "Done" },
-        { value: "canceld", label: "Canceld" },
-    ];
-
     const level = [
-        { value: "High_level", label: "High Level" },
-        { value: "medium_level", label: "Medium Level" },
+        { value: "High Level", label: "High Level" },
+        { value: "Medium Level", label: "Medium Level" },
     ];
 
     const zone = [
@@ -199,6 +200,9 @@ export default function AddPlanActionForm() {
 
 
     const handleAddPlanAction = async () => {
+        const isValid = validateForm(formData, setErrors);
+        if (!isValid) return;
+        setLoading(true);
         try {
             // fusionner formData + planData
             const fullData = { ...formData, ...planData };
@@ -206,7 +210,7 @@ export default function AddPlanActionForm() {
             console.log("📤 Données envoyées :", fullData);
 
             const res = await PlanActionService.createPlanAction(fullData);
-
+            setLoading(false);
             swal({
                 title: "Succès !",
                 text: "Le plan d’action a été ajouté avec succès.",
@@ -215,6 +219,7 @@ export default function AddPlanActionForm() {
                 navigate("/plan-action");
             });
         } catch (err) {
+            setLoading(false);
             console.error("❌ Erreur d’ajout :", err);
             swal("Erreur", "Une erreur est survenue lors de l’ajout.", "error");
         }
@@ -234,14 +239,6 @@ export default function AddPlanActionForm() {
             <ComponentCard title="Ajouter un Plan d'action">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <Label>statut</Label>
-                        <Select
-                            options={status}
-                            placeholder="Sélectionner une statut"
-                            onChange={(val) => handleSelectChange(val, "status")}
-                        />
-                    </div>
-                    <div>
                         <Label>Departement</Label>
                         <Select
                             options={departements.length > 0
@@ -249,8 +246,9 @@ export default function AddPlanActionForm() {
                                 : [{ value: "", label: "Aucun département disponible" }]
                             }
                             placeholder={loading ? "Chargement..." : "Sélectionner"}
-                            onChange={(val) => handleSelectChange(val, "id_departement")}
+                            onChange={(val) => handleSelectChange(val, "nom_departement")}
                         />
+                        {errors.nom_departement && <p className="text-red-500 text-sm">{errors.nom_departement}</p>}
                     </div>
                     <div>
                         <Label>Zone</Label>
@@ -259,6 +257,7 @@ export default function AddPlanActionForm() {
                             placeholder="Sélectionner une Zone"
                             onChange={(val) => handleSelectChange(val, "zone")}
                         />
+                        {errors.zone && <p className="text-red-500 text-sm">{errors.zone}</p>}
                     </div>
                     <div>
                         <Label htmlFor="origine">Origine</Label>
@@ -267,6 +266,7 @@ export default function AddPlanActionForm() {
                             placeholder="Sélectionner Origine"
                             onChange={(val) => handleSelectChange(val, "origine")}
                         />
+                        {errors.origine && <p className="text-red-500 text-sm">{errors.origine}</p>}
                     </div>
                     <div>
                         <Label htmlFor="prob">Problémes</Label>
@@ -276,6 +276,7 @@ export default function AddPlanActionForm() {
                             name="prob"
                             onChange={handleChange}
                         />
+                        {errors.prob && <p className="text-red-500 text-sm">{errors.prob}</p>}
                     </div>
                     <div>
                         <Label htmlFor="cause">Cause</Label>
@@ -284,7 +285,10 @@ export default function AddPlanActionForm() {
                             id="cause"
                             name="cause"
                             onChange={handleChange}
+                            error={!!errors.cause}
+                            success={!!formData.cause}
                         />
+                        {errors.cause && <p className="text-red-500 text-sm">{errors.cause}</p>}
                     </div>
                     <div>
                         <Label htmlFor="action">Actions</Label>
@@ -293,44 +297,52 @@ export default function AddPlanActionForm() {
                             id="action"
                             name="action"
                             onChange={handleChange}
+                            error={!!errors.action}
+                            success={!!formData.action}
                         />
+                        {errors.action && <p className="text-red-500 text-sm">{errors.action}</p>}
                     </div>
-                    <DatePicker
-                        id="date_debut"
-                        label="Date de début"
-                        placeholder="Sélectionner une date"
-                        onChange={(dates) => {
-                            const selectedDate = Array.isArray(dates) ? dates[0] : dates;
-                            setFormData((prev: any) => ({
-                                ...prev,
-                                date_debut: selectedDate ? selectedDate.toISOString().split("T")[0] : "",
-                            }));
-                        }}
-                    />
-
-                    <DatePicker
-                        id="date_cloture"
-                        label="Date de clôture"
-                        placeholder="Sélectionner une date"
-                        onChange={(dates) => {
-                            const selectedDate = Array.isArray(dates) ? dates[0] : dates;
-                            setFormData((prev: any) => ({
-                                ...prev,
-                                date_cloture: selectedDate ? selectedDate.toISOString().split("T")[0] : "",
-                            }));
-                        }}
-                    />
-
+                    <div>
+                        <DatePicker
+                            id="date_debut"
+                            label="Date de début"
+                            placeholder="Sélectionner une date"
+                            onChange={(dates) => {
+                                const selectedDate = Array.isArray(dates) ? dates[0] : dates;
+                                setFormData((prev: any) => ({
+                                    ...prev,
+                                    date_debut: selectedDate ? selectedDate.toISOString().split("T")[0] : "",
+                                }));
+                            }}
+                        />
+                        {errors.date_debut && <p className="text-red-500 text-sm">{errors.date_debut}</p>}
+                    </div>
+                    <div>
+                        <DatePicker
+                            id="date_cloture"
+                            label="Date de clôture"
+                            placeholder="Sélectionner une date"
+                            onChange={(dates) => {
+                                const selectedDate = Array.isArray(dates) ? dates[0] : dates;
+                                setFormData((prev: any) => ({
+                                    ...prev,
+                                    date_cloture: selectedDate ? selectedDate.toISOString().split("T")[0] : "",
+                                }));
+                            }}
+                        />
+                        {errors.date_cloture && <p className="text-red-500 text-sm">{errors.date_cloture}</p>}
+                    </div>
                     <div>
                         <Label>Responsable</Label>
                         <Select
                             options={user.length > 0
-                                ? user.map(user => ({ value: String(user.id_user), label: user.first_name }))
+                                ? user.map(user => ({ value: String(user.id_user), label: user.first_name + ' ' + user.last_name }))
                                 : [{ value: "", label: "Aucun utilisateur disponible" }]
                             }
                             placeholder={loading ? "Chargement..." : "Sélectionner"}
                             onChange={(val) => handleSelectChange(val, "responsable")}
                         />
+                        {errors.responsable && <p className="text-red-500 text-sm">{errors.responsable}</p>}
                     </div>
                     <div>
                         <Label htmlFor="support">Support</Label>
@@ -339,7 +351,10 @@ export default function AddPlanActionForm() {
                             id="support"
                             name="support"
                             onChange={handleChange}
+                            error={!!errors.support}
+                            success={!!formData.support}
                         />
+                        {errors.support && <p className="text-red-500 text-sm">{errors.support}</p>}
                     </div>
                     <div>
                         <Label>Controle d'efficacité</Label>
@@ -348,7 +363,10 @@ export default function AddPlanActionForm() {
                             id="contol_effic"
                             name="contol_effic"
                             onChange={handleChange}
+                            error={!!errors.contol_effic}
+                            success={!!formData.contol_effic}
                         />
+                        {errors.contol_effic && <p className="text-red-500 text-sm">{errors.contol_effic}</p>}
                     </div>
                     <div className="mb-5">
                         <Label>Note(date de retardement ou docs Utilisés pour controle Efficacité )</Label>
@@ -357,7 +375,10 @@ export default function AddPlanActionForm() {
                             id="note"
                             name="note"
                             onChange={handleChange}
+                            error={!!errors.note}
+                            success={!!formData.note}
                         />
+                        {errors.note && <p className="text-red-500 text-sm">{errors.note}</p>}
                     </div>
                     <div>
                         <Label>Annulation</Label>
@@ -366,6 +387,7 @@ export default function AddPlanActionForm() {
                             placeholder="Sélectionner un code"
                             onChange={(val) => handleSelectChange(val, "annul")}
                         />
+                        {errors.annul && <p className="text-red-500 text-sm">{errors.annul}</p>}
                     </div>
                     {!AdminPermission && (
                         <div>
@@ -375,16 +397,19 @@ export default function AddPlanActionForm() {
                                 placeholder="Sélectionner un niveau"
                                 onChange={(val) => handleSelectChange(val, "level")}
                             />
+                            {errors.level && <p className="text-red-500 text-sm">{errors.level}</p>}
                         </div>
                     )}
                 </div>
                 <div className="flex items-center justify-center mt-6">
                     <button
+                        type="button"
                         onClick={handleAddPlanAction}
-                        className="px-3 py-2 text-sm text-white bg-blue-500 rounded shadow-md hover:bg-blue-700"
-                        type="submit"
+                        className={`px-6 py-2 text-sm text-white rounded-lg shadow-md transition ${loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                            }`}
+                        disabled={loading}
                     >
-                        Ajouter plan d'action
+                        {loading ? "⏳ Enregistrement..." : "Sauvegarder"}
                     </button>
                 </div>
             </ComponentCard>

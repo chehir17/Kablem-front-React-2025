@@ -20,41 +20,66 @@ const EditPlanActionStatus: React.FC<EditPlanActionStatusProps> = ({
   planAction,
   onSave,
 }) => {
-  const [status, setStatus] = useState("open");
-  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<string>("open");
+  const [progress, setProgress] = useState<number>(0);
+  const [error, setError] = useState<string>("");
 
+  // Charger les valeurs de planAction si elles existent
   useEffect(() => {
     if (planAction) {
-      setStatus(planAction.status);
-      setProgress(planAction.progress);
+      setStatus(planAction.status || "open");
+      setProgress(planAction.progress ?? 0);
     }
   }, [planAction]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (planAction) {
-      onSave({
-        id_planaction: planAction.id_planaction,
-        status,
-        progress,
-      });
-      onClose();
+
+    // Validation côté client avant d’envoyer
+    if (!planAction) {
+      setError("Aucun plan d’action sélectionné.");
+      return;
     }
+
+    if (status.trim() === "") {
+      setError("Le statut ne peut pas être vide.");
+      return;
+    }
+
+    if (progress < 0 || progress > 100) {
+      setError("La progression doit être comprise entre 0 et 100.");
+      return;
+    }
+
+    const updated = {
+      id_planaction: planAction.id_planaction,
+      status: status.trim(),
+      progress,
+    };
+
+    console.log("🔍 Données envoyées :", updated);
+
+    onSave(updated);
+    onClose();
   };
 
   const optionsStatut = [
     { value: "open", label: "Open" },
     { value: "in progress", label: "In Progress" },
     { value: "done", label: "Done" },
-    { value: "canceld", label: "Canceld" },
+    { value: "canceld", label: "Canceled" },
   ];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[700px] m-2">
-      <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
+      <div className="relative w-full max-w-[700px] rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-7">
         <h4 className="mb-4 text-2xl font-semibold text-gray-800 dark:text-white/90">
-          {planAction ? `Modifier le statut et la progression N° ${planAction.id_planaction}` : "Modifier"}
+          {planAction
+            ? `Modifier le statut et la progression N° ${planAction.id_planaction}`
+            : "Modifier"}
         </h4>
+
+        {error && <p className="text-red-500 mb-2">{error}</p>}
 
         <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
           <div>
@@ -67,7 +92,9 @@ const EditPlanActionStatus: React.FC<EditPlanActionStatusProps> = ({
               onChange={(e) => setProgress(Number(e.target.value))}
               className="w-full"
             />
-            <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">{progress}%</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+              {progress}%
+            </div>
           </div>
 
           <div>
@@ -75,7 +102,7 @@ const EditPlanActionStatus: React.FC<EditPlanActionStatusProps> = ({
             <Select
               options={optionsStatut}
               placeholder="Sélectionner un statut"
-              onChange={(value: any) => setStatus(value)}
+              onChange={(value: any) => setStatus(value?.value || value)}
               value={status}
             />
           </div>

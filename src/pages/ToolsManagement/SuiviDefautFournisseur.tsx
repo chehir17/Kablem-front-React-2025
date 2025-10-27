@@ -1,4 +1,4 @@
-import { JSX, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableLayout from "../../layout/DataTableLayout";
@@ -6,146 +6,72 @@ import ActionMenu from "../../utils/ActionOption";
 import { useNavigate } from "react-router";
 import DynamicFilters from "../../utils/DynamicFilters";
 import EditSuiviFournsisseurModel from "../../components/SuiviFournisseur/EditSuiviFournisseurModel";
-import { Download } from "lucide-react";
 import ModalPreview from "../../utils/ModelPreview";
+import { Suivifournisseur } from "../../types/Suivifournisseur";
+import { SuiviFournisseurService } from "../../services/SuiviFournissuerService";
+import { Column } from "../../types/Columns";
+import { useUserData } from "../../hooks/useUserData";
 
 export default function SuiviFournisseur() {
 
-    interface SuiviFournisseur {
-        id_suivifournisseur: number;
-        created_at: Date;
-        id_article: string;
-        id_fournisseur: string;
-        classification: string;
-        desc_prob: string;
-        pcs_ko_detecte: number;
-        triage: string;
-        tot_pcs_ko: number;
-        decision: string;
-        derogation: string;
-        cout_tret: number;
-        statut: string;
-        notes: string;
-        piece_joint: string;
-    }
 
-    interface Column<T> {
-        name: string;
-        selector?: (row: T) => string | number;
-        sortable?: boolean;
-        cell?: (row: T) => JSX.Element;
-    }
-
-
-    const [suiviFournisseur, setSuiviFournisseur] = useState<SuiviFournisseur[]>([
-        {
-            id_suivifournisseur: 1,
-            created_at: new Date("2025-09-01"),
-            id_article: "ART-001",
-            id_fournisseur: "FRN-001",
-            classification: "Critique",
-            desc_prob: "Les pièces livrées présentent des fissures visibles.",
-            pcs_ko_detecte: 12,
-            triage: "Non",
-            tot_pcs_ko: 12,
-            decision: "Rejet total",
-            derogation: "Non",
-            cout_tret: 2500,
-            statut: "Ouvert",
-            notes: "Demande d'audit fournisseur envoyée.",
-            piece_joint: "rapport_inspection.pdf"
-        },
-        {
-            id_suivifournisseur: 2,
-            created_at: new Date("2025-09-03"),
-            id_article: "ART-002",
-            id_fournisseur: "FRN-002",
-            classification: "Majeur",
-            desc_prob: "Erreur dans la dimension des composants fournis.",
-            pcs_ko_detecte: 15,
-            triage: "Oui",
-            tot_pcs_ko: 30,
-            decision: "Réparation interne",
-            derogation: "Oui",
-            cout_tret: 1800,
-            statut: "En cours",
-            notes: "Attente de validation de la dérogation.",
-            piece_joint: "photos_defaut.zip"
-        },
-
-        {
-            id_suivifournisseur: 3,
-            created_at: new Date("2025-11-03"),
-            id_article: "ART-003",
-            id_fournisseur: "FRN-003",
-            classification: "Mineur",
-            desc_prob: "Petites rayures sur la surface mais sans impact fonctionnel.",
-            pcs_ko_detecte: 5,
-            triage: "Non",
-            tot_pcs_ko: 5,
-            decision: "Accepté sous dérogation",
-            derogation: "Oui",
-            cout_tret: 0,
-            statut: "Clôturé",
-            notes: "Incident toléré, pas d'impact sur la production.",
-            piece_joint: "rapport_quality.docx"
-        },
-        {
-            id_suivifournisseur: 4,
-            created_at: new Date("2025-11-27"),
-            id_article: "ART-004",
-            id_fournisseur: "FRN-004",
-            classification: "Critique",
-            desc_prob: "Lot incomplet, 15 pièces manquantes à la livraison.",
-            pcs_ko_detecte: 15,
-            triage: "Oui",
-            tot_pcs_ko: 15,
-            decision: "Renvoi partiel",
-            derogation: "Non",
-            cout_tret: 950,
-            statut: "Annulé",
-            notes: "Commande annulée et nouvelle livraison demandée.",
-            piece_joint: "bon_livraison.pdf"
-        }
-
-
-    ]);
-
-    const [selectedSuiviFournisseur, SetSelectedSuiviFournisseur] = useState<SuiviFournisseur | null>(null);
+    const [suiviFournisseur, setSuiviFournisseur] = useState<Suivifournisseur[]>([]);
+    const [selectedSuiviFournisseur, SetSelectedSuiviFournisseur] = useState<Suivifournisseur | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [type, setType] = useState('suivifournisseur');
+    const { user: _user, etat100 } = useUserData();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await SuiviFournisseurService.getSuiviFournisseur();
+                setSuiviFournisseur(data);
+                console.log(data);
+            } catch (err) {
+                console.error(err);
+                setError("Erreur lors du chargement des données.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
 
-    // const openModal = (registerscraps: RegistreSCRAP) => {
-    //     setRegistrScrap(registerscraps);
-    //     setIsModalOpen(true);
-    // };
 
-
-    const deleteSuiviFournisseur = (id: number) => {
-        setSuiviFournisseur((prev) => prev.filter((r) => r.id_suivifournisseur !== id));
+    const handleDelete = async (id_suivifournisseur: number) => {
+        if (!window.confirm("Voulez-vous vraiment supprimer cette ligne ?")) return;
+        try {
+            await SuiviFournisseurService.deleteSuiviFournisseur(id_suivifournisseur);
+            setSuiviFournisseur((prev) => prev.filter((a) => a.id_suivifournisseur !== id_suivifournisseur));
+        } catch (err) {
+            console.error("Erreur lors de la suppression :", err);
+        }
     };
 
 
-    const handleEdit = (row: SuiviFournisseur) => {
+    const handleEdit = (row: Suivifournisseur) => {
         SetSelectedSuiviFournisseur(row);
         setIsModalUpdateOpen(true);
     };
 
-    const handleSave = (updatedSuiviFournisseur: SuiviFournisseur) =>
+    const handleSave = (updatedSuiviFournisseur: Suivifournisseur) =>
         setSuiviFournisseur((prev) =>
             prev.map((r) => (r.id_suivifournisseur === updatedSuiviFournisseur.id_suivifournisseur ? updatedSuiviFournisseur : r))
         );
 
-    const getSuiviFournisseurOptions = (row: SuiviFournisseur) => [
+    const getSuiviFournisseurOptions = (row: Suivifournisseur) => [
         {
             label: "Modifier",
             onClick: () => handleEdit(row),
         },
         {
             label: "Supprimer",
-            onClick: () => deleteSuiviFournisseur(row.id_suivifournisseur),
+            onClick: () => handleDelete(row.id_suivifournisseur),
         },
     ];
 
@@ -177,17 +103,17 @@ export default function SuiviFournisseur() {
     const filteredSuiviFournisseur = suiviFournisseur.filter((r) => {
         return Object.entries(filters).every(([key, value]) => {
             if (!value) return true;
-            const fieldValue = String(r[key as keyof SuiviFournisseur] ?? "").toLowerCase();
+            const fieldValue = String(r[key as keyof Suivifournisseur] ?? "").toLowerCase();
             return fieldValue.includes(value.toLowerCase());
         });
     });
     /////////
 
-    const columns: Column<SuiviFournisseur>[] = [
-        { name: "Date Création", selector: (row) => row.created_at.toLocaleDateString("fr-FR"), sortable: true },
-        { name: "Code Article", selector: (row) => row.id_article, sortable: true },
-        { name: "Nom Fournisseur", selector: (row) => row.id_fournisseur, sortable: true },
-        { name: "Classification", selector: (row) => row.classification, sortable: true },
+    const columns: Column<Suivifournisseur>[] = [
+        { name: "Date Création", selector: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString() : "—", sortable: true },
+        { name: "Code Article", selector: (row) => row.code_artc, sortable: true },
+        { name: "Nom Fournisseur", selector: (row) => row.nom_fournisseur, sortable: true },
+        { name: "Classification", selector: (row) => row.class, sortable: true },
         { name: "Description de Probléme", selector: (row) => row.desc_prob!, sortable: true },
         { name: "Pcs KO détectées ", selector: (row) => row.pcs_ko_detecte, sortable: true },
         {
@@ -290,7 +216,7 @@ export default function SuiviFournisseur() {
             cell: (row: any) =>
                 row.piece_joint ? (
                     <a
-                        href={row.piece_joint}
+                        href={`http://localhost/platforme_KablemSPA_backEnd/public/files/${row.piece_joint}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
@@ -304,7 +230,20 @@ export default function SuiviFournisseur() {
             sortable: false,
         },
         {
+            name: "ajout plan action ",
+            hidden: etat100,
+            cell: (row) => {
+                return <button
+                    onClick={() => navigate("/plan-action/add-plan-action/" + row.id_suivifournisseur + "/" + type)}
+                    className="px-1 py-1 my-1 text-xs text-white bg-orange-500 rounded hover:bg-orange-700 hover:shadow-xl transition-shadow duration-200"
+                >
+                    plan d'action
+                </button>;
+            }
+        },
+        {
             name: "Actions",
+            hidden: etat100,
             cell: (row) => <ActionMenu options={getSuiviFournisseurOptions(row)} />,
         },
     ];
@@ -314,6 +253,7 @@ export default function SuiviFournisseur() {
             <PageMeta title="Suivi Fournisseur" description="Gestion des suivis des fournisseurs" />
             <PageBreadcrumb pageTitle="Suivi Fournisseur" />
             <button
+                hidden={etat100}
                 onClick={() => navigate("/suivi-fournisseur/add-suivi-fournisseur")}
                 className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
             >
@@ -323,8 +263,10 @@ export default function SuiviFournisseur() {
                 <DynamicFilters filters={filters} onFilterChange={handleFilterChange} fields={filterFields} />
                 <DataTableLayout
                     title="Liste des Suivis Fournisseur "
-                    columns={columns}
+                    columns={columns.filter((col) => !col.hidden)}
                     data={filteredSuiviFournisseur}
+                    loading={loading}
+                    error={error}
                 />
             </div>
             <EditSuiviFournsisseurModel

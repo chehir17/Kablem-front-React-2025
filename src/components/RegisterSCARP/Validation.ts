@@ -1,0 +1,40 @@
+export const validateForm = (formData: any, setErrors: (errors: any) => void): boolean => {
+    let newErrors: any = {};
+
+    if (!formData.zone_affe_prob) newErrors.zone_affe_prob = "La Zone Affectation du Problème est requise";
+    if (!formData.annulation) newErrors.annulation = "L'annulation est requise";
+    if (!formData.desc_prob) newErrors.desc_prob = "La Description du Problème est requise";
+    if (!formData.cout_unit) newErrors.cout_unit = "Le coût unitaire est requis";
+    if (!formData.machine) newErrors.machine = "La machine est requise";
+    if (!formData.Desc_acmo) newErrors.Desc_acmo = "La description de l’Action mise en œuvre est requise";
+    if (!formData.mini) newErrors.mini = "Le mini est requis";
+    if (!formData.table_elec) newErrors.table_elec = "La table électrique est requise";
+    if (!formData.qnt_scrap) newErrors.qnt_scrap = "La quantité Scrap est requise";
+    if (!formData.valeur_scrap) newErrors.valeur_scrap = "La valeur de Scrap est requise";
+    if (!formData.cause_prob) newErrors.cause_prob = "La cause du Problème est requise";
+    if (!formData.classification_cause) newErrors.classification_cause = "La classification de la cause est requise";
+    if (!formData.ac_immed_prend) newErrors.ac_immed_prend = "L’action à prendre est requise";
+    if (!formData.rebut_remplacer) newErrors.rebut_remplacer = "Le rebut remplacé est requis";
+    if (!formData.N_pecRec) newErrors.N_pecRec = "Le nombre de pièces récupérées est requis";
+    if (!formData.qnt_rebF) newErrors.qnt_rebF = "La quantité rebutée finale est requise";
+    if (!formData.h_interne) newErrors.h_interne = "Les heures internes dépensées pour rework sont requises";
+    if (!formData.h_externe) newErrors.h_externe = "Les heures externes dépensées sont requises";
+    if (!formData.cout_final) newErrors.cout_final = "Le coût final est requis";
+    if (!formData.res_pos) newErrors.res_pos = "Le résultat positif de tri est requis";
+    if (!formData.ac_corr_suppl) newErrors.ac_corr_suppl = "L’action corrective supplémentaire est requise";
+    if (!formData.N_ac_corr_ex) newErrors.N_ac_corr_ex = "Le N° d’action corrective externe est requis";
+    if (!formData.note) newErrors.note = "La note est requise";
+    if (!formData.poids_rebut) newErrors.poids_rebut = "Le poids des rebuts est requis";
+    if (!formData.id_ligne) newErrors.id_ligne = "La ligne d’assemblage est requise";
+    if (!formData.compilateur) newErrors.compilateur = "Le compilateur est requis";
+    if (!formData.id_lot) newErrors.id_lot = "La quantité du lot est requise";
+    if (!formData.date_production) newErrors.date_production = "La date de production est requise";
+    if (!formData.id_article) newErrors.id_article = "L’article est requis";
+    if (!formData.odl_rep) newErrors.odl_rep = "L’ODL à relancer par la logistique est requis";
+    if (!formData.new_odl) newErrors.new_odl = "Le nouvel ODL est requis";
+    if (!formData.level) newErrors.level = "Le niveau est requis";
+    if (!formData.oper_1) newErrors.oper_1 = "L’opérateur 1 est requis";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+};

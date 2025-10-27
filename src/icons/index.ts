@@ -65,6 +65,8 @@ import { ReactComponent as Scrap } from "./SCRAP.svg?react";
 import { ReactComponent as Money } from "./money.svg?react";
 import { ReactComponent as MachineIcon } from "./machine.svg?react";
 import { ReactComponent as AutoPassword } from "./auto-password.svg?react";
+import { ReactComponent as Package } from "./package.svg?react";
+import { ReactComponent as Rapport } from "./report.svg?react";
 
 
 export {
@@ -134,5 +136,7 @@ export {
   Scrap,
   Money,
   MachineIcon,
-  AutoPassword
+  AutoPassword,
+  Package,
+  Rapport
 };

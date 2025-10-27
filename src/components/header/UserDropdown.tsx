@@ -101,10 +101,10 @@ export default function UserDropdown() {
                   fill=""
                 />
               </svg>
-              Modifier Profile
+              Consulter votre Profile
             </DropdownItem>
           </li>
-          <li>
+          {/* <li>
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
@@ -128,7 +128,7 @@ export default function UserDropdown() {
               </svg>
               Paramètres du compte
             </DropdownItem>
-          </li>
+          </li> */}
           <li>
             <DropdownItem
               onItemClick={closeDropdown}

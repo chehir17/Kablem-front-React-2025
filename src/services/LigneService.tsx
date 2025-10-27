@@ -15,7 +15,7 @@ export const LigneService = {
             const response = await axios.post(API_URL + '/ligne', data);
             return response.data;
         } catch (error: any) {
-            console.error("❌ Erreur lors de la création du Ligne:", error);
+            console.error("Erreur lors de la création du Ligne:", error);
             throw error;
         }
     },

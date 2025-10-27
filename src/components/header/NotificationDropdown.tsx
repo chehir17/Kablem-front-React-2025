@@ -1,56 +1,106 @@
-import { useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Link } from "react-router";
+import { Notif } from "../../types/Notif";
+import { NotifService } from "../../services/NotifService";
+
+const notifications: Notif[] = [];
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifying, setNotifying] = useState(true);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [notifList, setNotifList] = useState<Notif[]>(notifications);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  function toggleDropdown() {
-    setIsOpen(!isOpen);
-  }
+  const fetchNotif = async () => {
+    try {
+      if (!user) return;
 
-  function closeDropdown() {
-    setIsOpen(false);
-  }
+      const response = await NotifService.getById(user.id_user);
+      const data = response.data;
 
-  const handleClick = () => {
-    toggleDropdown();
-    setNotifying(false);
+      let list: Notif[] = [];
+
+      if (Array.isArray(data)) {
+        list = data;
+      } else if (Array.isArray(data.data)) {
+        list = data.data;
+      }
+
+      if (user.role === "admin") {
+        list = list.filter((n) => n.visibility === 3);
+      } else {
+        list = list.filter((n) => n.visibility === 0);
+      }
+
+      setNotifList(list);
+
+      const unread = list.some((n) =>
+        user.role === "admin" ? n.visibility === 3 : n.visibility === 0
+      );
+      setHasUnread(unread);
+    } catch (err) {
+      setError(" Impossible de charger vos notifications.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  interface Notification {
-    id: number;
-    title: string;
-    message: string;
-    time: Date | string;
-    photoUrl?: string;
-  }
+  useEffect(() => {
+    const userData = localStorage.getItem("userData");
+    const storedUser = userData ? JSON.parse(userData) : null;
+    if (storedUser) {
+      setUser(storedUser);
+    }
+  }, []);
 
-  const notifications: Notification[] = [
-    {
-      id: 1,
-      title: "le plan d'action N°1234 a été fermé",
-      message: "Fermeture d'une action",
-      time: new Date("2025-11-19"),
-      photoUrl: "",
-    },
-    {
-      id: 2,
-      title: "Alerte du serveur",
-      message: "Une utilisation élevée du CPU a été détectée sur le serveur.",
-      time: new Date("2025-11-22"),
-      photoUrl: "",
-    },
-    {
-      id: 3,
-      title: "Rappel de réunion",
-      message: "N'oubliez pas votre réunion à 15h.",
-      time: new Date("2025-11-22"),
-      photoUrl: "",
-    },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchNotif();
+    }
+  }, [user]);
+
+  const updateVisibility = async () => {
+    try {
+      if (!user) return;
+
+      const unreadNotif = notifList.filter((n) =>
+        user.role === "admin" ? n.visibility === 3 : n.visibility === 0
+      );
+
+      if (unreadNotif.length === 0) return;
+
+      await Promise.all(
+        unreadNotif.map((notif) =>
+          NotifService.updateNotif(notif.id_notif, {
+            visibility: user.role === "admin" ? 4 : 1,
+          })
+        )
+      );
+
+      setNotifList((prev) =>
+        prev.map((n) => ({
+          ...n,
+          visibility: user.role === "admin" ? 4 : 1,
+        }))
+      );
+
+      setHasUnread(false);
+    } catch (error) {
+      console.error(" Erreur lors de la mise à jour des notifications :", error);
+    }
+  };
+
+  const handleClick = () => {
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      updateVisibility();
+    }
+  };
 
   return (
     <div className="relative">
@@ -58,12 +108,12 @@ export default function NotificationDropdown() {
         className="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full dropdown-toggle hover:text-gray-700 h-11 w-11 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         onClick={handleClick}
       >
-        <span
-          className={`absolute right-0 top-0.5 z-10 h-2 w-2 rounded-full bg-orange-400 ${!notifying ? "hidden" : "flex"
-            }`}
-        >
-          <span className="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 animate-ping"></span>
-        </span>
+        {hasUnread && (
+          <span className="absolute right-0 top-0.5 z-10 h-2 w-2 rounded-full bg-orange-400">
+            <span className="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 animate-ping"></span>
+          </span>
+        )}
+
         <svg
           className="fill-current"
           width="20"
@@ -79,74 +129,46 @@ export default function NotificationDropdown() {
           />
         </svg>
       </button>
+
       <Dropdown
         isOpen={isOpen}
-        onClose={closeDropdown}
+        onClose={() => setIsOpen(false)}
         className="absolute -right-[240px] mt-[17px] flex h-auto w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-[361px] lg:right-0"
       >
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-700">
           <h5 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Notification
+            Notifications
           </h5>
-          <button
-            onClick={toggleDropdown}
-            className="text-gray-500 transition dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          >
-            <svg
-              className="fill-current"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
         </div>
+
+        {loading && <p className="p-4 text-center">⏳ Chargement des notifications...</p>}
+        {error && <p className="p-4 text-center text-red-600">{error}</p>}
+
         <ul className="flex flex-col h-auto overflow-y-auto custom-scrollbar">
-          {notifications.map((notification) => (
-            <li key={notification.id}>
+          {notifList.length === 0 && !loading && !error && (
+            <p className="p-4 text-center text-gray-500 dark:text-gray-400">
+              🔕 Aucune notification disponible
+            </p>
+          )}
+          {notifList.map((notification) => (
+            <li key={notification.id_notif}>
               <DropdownItem
-                onItemClick={closeDropdown}
+                onItemClick={() => setIsOpen(false)}
                 className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
               >
-                {notification.photoUrl ? (
-                  <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
-                    <img
-                      width={40}
-                      height={40}
-                      src="/images/user/user-02.jpg"
-                      alt="User"
-                      className="w-full overflow-hidden rounded-full"
-                    />
-                    <span className="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white bg-success-500 dark:border-gray-900"></span>
-                  </span>
-                ) : (
-                  ""
-                )}
-
                 <span className="block">
-                  <span className="mb-1.5 block  text-theme-sm text-gray-500 dark:text-gray-400 space-x-1">
-                    <p className="font-medium text-gray-800 dark:text-white/90">
-                      {notification.title}
-                    </p>
-                    <span>{notification.message} </span>
-                  </span>
+                  <p className="font-medium text-gray-800 dark:text-white/90">
+                    {notification.titre}
+                  </p>
+                  <span className="text-gray-500 dark:text-gray-400">{notification.body}</span>
 
-                  <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                    <span>Project</span>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span className="flex items-center gap-2 mt-1 text-gray-500 text-theme-xs dark:text-gray-400">
                     <span>
-                      {notification.time
-                        ? typeof notification.time === "string"
-                          ? notification.time
-                          : notification.time.toLocaleString()
-                        : "Unknown"}
+                      {notification.created_at
+                        ? typeof notification.created_at === "string"
+                          ? notification.created_at
+                          : notification.created_at.toLocaleString()
+                        : "Inconnue"}
                     </span>
                   </span>
                 </span>
@@ -154,6 +176,7 @@ export default function NotificationDropdown() {
             </li>
           ))}
         </ul>
+
         <Link
           to="/historique-taches"
           className="block px-4 py-2 mt-3 text-sm font-medium text-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"

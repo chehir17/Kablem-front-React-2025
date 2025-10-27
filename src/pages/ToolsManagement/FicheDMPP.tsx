@@ -1,109 +1,84 @@
-import { JSX, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableLayout from "../../layout/DataTableLayout";
 import { Modal } from "../../components/ui/modal";
 import ActionMenu from "../../utils/ActionOption";
-import EditRapportNcModal from "../../components/RapportNC/EditRapportNCForm";
 import { useNavigate } from "react-router";
 import DynamicFilters from "../../utils/DynamicFilters";
 import EditFIchDMPPModal from "../../components/FichDMPP/EditFichDMPPMdoel";
 import ModalPreview from "../../utils/ModelPreview";
+import { FichDMPPService } from "../../services/FichDMPP";
+import { FicheDMPP } from "../../types/FichDMPP";
+import { Column } from "../../types/Columns";
+import { useUserData } from "../../hooks/useUserData";
 
 export default function FichDMPP() {
 
-    interface FichDMPP {
-        id: number;
-        nom_ligne: string;
-        post: string;
-        code_artc: string;
-        nature: string;
-        zone: string;
-        date_sou: Date;
-        type: string;
-        nom_client: string;
-        cout_estimative: string;
-        etat_actu: string;
-        etat_modif: string;
-        objectif_modif: string;
-    }
-
-    interface Column<T> {
-        name: string;
-        selector?: (row: T) => string | number;
-        sortable?: boolean;
-        cell?: (row: T) => JSX.Element;
-    }
-
-    const [fichdmpps, setFichdmpps] = useState<FichDMPP[]>([
-        {
-            id: 1,
-            nom_ligne: "Ligne A1",
-            post: "Poste 3",
-            code_artc: "ART-1234",
-            nature: "Défaut d'assemblage",
-            zone: "Zone 5",
-            date_sou: new Date("2025-09-07"),
-            type: "Corrective",
-            nom_client: "Client XYZ",
-            cout_estimative: "2500",
-            etat_actu: "En cours",
-            etat_modif: "Planifié",
-            objectif_modif: "Réduction des défauts de montage",
-        },
-        {
-            id: 2,
-            nom_ligne: "Ligne B1",
-            post: "Poste 2",
-            code_artc: "ART-1008",
-            nature: "Défaut d'assemblage",
-            zone: "Zone 1",
-            date_sou: new Date("2025-10-07"),
-            type: "Corrective",
-            nom_client: "Client XYZ",
-            cout_estimative: "2500",
-            etat_actu: "bloqué",
-            etat_modif: "Planifié",
-            objectif_modif: "Réduction des défauts de montage Réduction des défauts de montage Réduction des défauts de montage",
-        }
-    ]);
-
-    const [selectedFichDMPP, SetSelectedFichDMPP] = useState<FichDMPP | null>(null);
+    const [fichdmpps, setFichdmpps] = useState<FicheDMPP[]>([]);
+    const [selectedFichDMPP, SetSelectedFichDMPP] = useState<FicheDMPP | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isModalUpdateOpen, setIsModalUpdateOpen] = useState(false);
     const navigate = useNavigate();
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [type, setType] = useState('dmpp');
 
+    const { user: _user, etat100 } = useUserData();
 
-    const openModal = (fichdmpps: FichDMPP) => {
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await FichDMPPService.getDMPP();
+                setFichdmpps(data);
+                console.log(data);
+            } catch (err) {
+                console.error(err);
+                setError("Erreur lors du chargement des données.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const openModal = (fichdmpps: FicheDMPP) => {
         SetSelectedFichDMPP(fichdmpps);
         setIsModalOpen(true);
     };
 
 
-    const deleteFichDMPP = (id: number) => {
-        setFichdmpps((prev) => prev.filter((r) => r.id !== id));
+
+    //delete fiche dmpp
+    const handleDelete = async (id_dmpp: number) => {
+        if (!window.confirm("Voulez-vous vraiment supprimer cette ligne ?")) return;
+        try {
+            await FichDMPPService.deleteDMPP(id_dmpp);
+            setFichdmpps((prev) => prev.filter((a) => a.id_dmpp !== id_dmpp));
+        } catch (err) {
+            console.error("Erreur lors de la suppression :", err);
+        }
     };
 
-
-    const handleEdit = (row: FichDMPP) => {
+    const handleEdit = (row: FicheDMPP) => {
         SetSelectedFichDMPP(row);
         setIsModalUpdateOpen(true);
     };
 
-    const handleSave = (updatedRapport: FichDMPP) => {
+    const handleSave = (updatedfichdmpp: FicheDMPP) => {
         setFichdmpps((prev) =>
-            prev.map((r) => (r.id === updatedRapport.id ? updatedRapport : r))
+            prev.map((r) => (r.id_dmpp === updatedfichdmpp.id_dmpp ? updatedfichdmpp : r))
         );
     };
 
-    const getFichDMPPOptions = (row: FichDMPP) => [
+    const getFichDMPPOptions = (row: FicheDMPP) => [
         {
             label: "Modifier",
             onClick: () => handleEdit(row),
         },
         {
             label: "Supprimer",
-            onClick: () => deleteFichDMPP(row.id),
+            onClick: () => handleDelete(row.id_dmpp),
         },
     ];
 
@@ -136,13 +111,13 @@ export default function FichDMPP() {
     const filteredFichDMPP = fichdmpps.filter((r) => {
         return Object.entries(filters).every(([key, value]) => {
             if (!value) return true; // si pas de filtre → garder
-            const fieldValue = String(r[key as keyof FichDMPP] ?? "").toLowerCase();
+            const fieldValue = String(r[key as keyof FicheDMPP] ?? "").toLowerCase();
             return fieldValue.includes(value.toLowerCase());
         });
     });
     /////////
 
-    const columns: Column<FichDMPP>[] = [
+    const columns: Column<FicheDMPP>[] = [
         { name: "Ligne", selector: (row) => row.nom_ligne, sortable: true },
         { name: "Poste", selector: (row) => row.post, sortable: true },
         { name: "Réf", selector: (row) => row.code_artc, sortable: true },
@@ -150,7 +125,7 @@ export default function FichDMPP() {
         { name: "Zone", selector: (row) => row.zone, sortable: true },
         {
             name: "Date souhaité",
-            selector: (row) => row.date_sou.toLocaleDateString("fr-FR"),
+            selector: (row) => row.date_sou ? new Date(row.date_sou).toLocaleDateString() : "—",
             sortable: true
         },
         { name: "Type (produit/process/Changement de réf) ", selector: (row) => row.type, sortable: true },
@@ -197,7 +172,20 @@ export default function FichDMPP() {
             ),
         },
         {
-            name: "Actions & (AC/AP)",
+            name: "ajout plan action ",
+            hidden: etat100,
+            cell: (row) => {
+                return <button
+                    onClick={() => navigate("/plan-action/add-plan-action/" + row.id_dmpp + "/" + type)}
+                    className="px-1 py-1 my-1 text-xs text-white bg-orange-500 rounded hover:bg-orange-700 hover:shadow-xl transition-shadow duration-200"
+                >
+                    plan d'action
+                </button>;
+            }
+        },
+        {
+            name: "Actions",
+            hidden: etat100,
             cell: (row) => <ActionMenu options={getFichDMPPOptions(row)} />,
         },
     ];
@@ -209,6 +197,7 @@ export default function FichDMPP() {
             <button
                 onClick={() => navigate("/fich-dmpp/add-fich-dmpp")}
                 className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
+                hidden={etat100}
             >
                 Ajouter une Fich DMPP
             </button>
@@ -216,8 +205,10 @@ export default function FichDMPP() {
                 <DynamicFilters filters={filters} onFilterChange={handleFilterChange} fields={filterFields} />
                 <DataTableLayout
                     title="Liste des FicheS DMPP"
-                    columns={columns}
+                    columns={columns.filter((col) => !col.hidden)}
                     data={filteredFichDMPP}
+                    loading={loading}
+                    error={error}
                 />
             </div>
             <EditFIchDMPPModal

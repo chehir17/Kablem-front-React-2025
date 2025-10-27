@@ -15,7 +15,7 @@ export const FournisseurService = {
             const response = await axios.post(API_URL + '/fournisseur', data);
             return response.data;
         } catch (error: any) {
-            console.error("❌ Erreur lors de la création du Fournisseur:", error);
+            console.error(" Erreur lors de la création du Fournisseur:", error);
             throw error;
         }
     },

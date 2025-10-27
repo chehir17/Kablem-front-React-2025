@@ -25,8 +25,7 @@ export const login = async (email: string, password: string) => {
       return { success: false, message: message || "Email ou mot de passe incorrect." };
     }
   } catch (error: any) {
-    console.error("❌ Login error:", error);
-    // Axios stocke le message du backend dans error.response.data
+    console.error(" Login error:", error);
     const msg = error.response?.data?.message || "Erreur de connexion au serveur";
     return { success: false, message: msg };
   }
