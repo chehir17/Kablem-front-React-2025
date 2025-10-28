@@ -3,6 +3,7 @@ import CountUp from "react-countup";
 import { Scrap, ArrowUpIcon, ArrowDownIcon } from "../../../icons";
 import Badge from "../../ui/badge/Badge";
 import axios from "axios";
+import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const ScrapService = {
   getMonthlyStats: async () => {
@@ -24,29 +25,38 @@ export default function ScrapCount() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
   useEffect(() => {
     const fetchScrapData = async () => {
-      try {
-        setLoading(true);
-        const data = await ScrapService.getMonthlyStats();
-        setScrapData({
-          currentMonthScrap: data.current_month_scrap,
-          previousMonthScrap: data.previous_month_scrap,
-          variation: data.variation,
-          isIncrease: data.is_increase,
-          month: data.month
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-        console.error('Erreur:', err);
-      } finally {
-        setLoading(false);
-      }
+      await executeDebouncedApi(
+        async () => {
+          try {
+            setLoading(true);
+            const data = await ScrapService.getMonthlyStats();
+            setScrapData({
+              currentMonthScrap: data.current_month_scrap,
+              previousMonthScrap: data.previous_month_scrap,
+              variation: data.variation,
+              isIncrease: data.is_increase,
+              month: data.month
+            });
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur inconnue');
+            console.error('Erreur:', err);
+          } finally {
+            setLoading(false);
+          }
+        }
+      );
     };
 
     fetchScrapData();
-  }, []);
+
+    return () => {
+      cancel();
+    };
+  }, [executeDebouncedApi, cancel]);
 
   if (loading) {
     return (
@@ -83,10 +93,10 @@ export default function ScrapCount() {
           <span className="text-sm text-gray-500 dark:text-gray-400">
             Registres Scrap ({scrapData.month})
           </span>
-          <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
+          <h4 className="mt-3 font-bold text-gray-800 text-title-sm dark:text-white/90">
             <CountUp end={scrapData.currentMonthScrap} duration={2} />
           </h4>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-3">
             Mois précédent: {scrapData.previousMonthScrap}
           </p>
         </div>

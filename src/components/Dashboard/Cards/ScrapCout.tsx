@@ -3,6 +3,7 @@ import CountUp from "react-countup";
 import { ArrowUpIcon, ArrowDownIcon, Money } from "../../../icons";
 import Badge from "../../ui/badge/Badge";
 import axios from "axios";
+import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const ScrapService = {
   getMonthlyCost: async () => {
@@ -24,29 +25,38 @@ export default function ScrapCost() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
   useEffect(() => {
     const fetchScrapCostData = async () => {
-      try {
-        setLoading(true);
-        const data = await ScrapService.getMonthlyCost();
-        setScrapCostData({
-          currentMonthCost: data.current_month_cost,
-          previousMonthCost: data.previous_month_cost,
-          variation: data.variation,
-          isIncrease: data.is_increase,
-          month: data.month
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-        console.error('Erreur:', err);
-      } finally {
-        setLoading(false);
-      }
+      await executeDebouncedApi(
+        async () => {
+          try {
+            setLoading(true);
+            const data = await ScrapService.getMonthlyCost();
+            setScrapCostData({
+              currentMonthCost: data.current_month_cost,
+              previousMonthCost: data.previous_month_cost,
+              variation: data.variation,
+              isIncrease: data.is_increase,
+              month: data.month
+            });
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur inconnue');
+            console.error('Erreur:', err);
+          } finally {
+            setLoading(false);
+          }
+        }
+      );
     };
 
     fetchScrapCostData();
-  }, []);
+
+    return () => {
+      cancel();
+    };
+  }, [executeDebouncedApi, cancel]);
 
   if (loading) {
     return (
@@ -93,7 +103,7 @@ export default function ScrapCost() {
               suffix=" €"
             />
           </h4>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-3">
             Mois précédent: {scrapCostData.previousMonthCost.toFixed(2)} €
           </p>
         </div>

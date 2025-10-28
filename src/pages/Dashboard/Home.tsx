@@ -52,9 +52,6 @@ export default function Home() {
 
         {isAgentQualite && (
           <>
-            <div className="col-span-12 xl:col-span-5">
-              <ByUser />
-            </div>
             <div className="col-span-12 xl:col-span-4">
               <PpmClient />
             </div>
@@ -63,6 +60,9 @@ export default function Home() {
             </div>
             <div className="col-span-12 xl:col-span-4">
               <PPM3 />
+            </div>
+            <div className="col-span-12 xl:col-span-5">
+              <ByUser />
             </div>
           </>
         )}

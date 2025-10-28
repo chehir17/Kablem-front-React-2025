@@ -153,7 +153,7 @@ export default function EditFIchDMPPModal({
         } catch (error) {
             swal({
                 title: "Erreur !",
-                text: "❌ Erreur lors de la mise à jour de fiche dmpp !",
+                text: "Erreur lors de la mise à jour de fiche dmpp !",
                 icon: "error",
             })
             console.error(error);

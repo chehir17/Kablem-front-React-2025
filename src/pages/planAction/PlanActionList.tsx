@@ -131,7 +131,7 @@ export default function PlanAction() {
     const handleSaveUpdateStatus = async (updated: { id_planaction: number; status: string; progress: number }) => {
         try {
             if (!updated || !updated.id_planaction || !updated.status) {
-                console.warn("⚠️ Données invalides, requête non envoyée :", updated);
+                console.warn(" Données invalides, requête non envoyée :", updated);
                 return;
             }
 

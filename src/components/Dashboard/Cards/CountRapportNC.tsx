@@ -3,6 +3,7 @@ import CountUp from "react-countup";
 import { Rapport, ArrowUpIcon, ArrowDownIcon, UserIcon,Package, PieChartIcon } from "../../../icons";
 import Badge from "../../ui/badge/Badge";
 import axios from "axios";
+import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const RapportNcService = {
   getMonthlyStats: async () => {
@@ -44,46 +45,55 @@ export default function CountRapportNC() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
   useEffect(() => {
     const fetchRapportNcData = async () => {
-      try {
-        setLoading(true);
-        const data = await RapportNcService.getMonthlyStats();
-        setRapportNcData({
-          currentMonthCount: data.current_month_count,
-          previousMonthCount: data.previous_month_count,
-          countVariation: data.count_variation,
-          isCountIncrease: data.is_count_increase,
-          
-          currentTotalQteNc: data.current_total_qte_nc,
-          previousTotalQteNc: data.previous_total_qte_nc,
-          qteVariation: data.qte_variation,
-          isQteIncrease: data.is_qte_increase,
-          
-          currentAvgQteNc: data.current_avg_qte_nc,
-          previousAvgQteNc: data.previous_avg_qte_nc,
-          currentMinQteNc: data.current_min_qte_nc,
-          currentMaxQteNc: data.current_max_qte_nc,
-          
-          currentUniqueClients: data.current_unique_clients,
-          previousUniqueClients: data.previous_unique_clients,
-          currentUniqueArticles: data.current_unique_articles,
-          previousUniqueArticles: data.previous_unique_articles,
-          
-          month: data.month,
-          previousMonth: data.previous_month
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-        console.error('Erreur:', err);
-      } finally {
-        setLoading(false);
-      }
+      await executeDebouncedApi(
+        async () => {
+          try {
+            setLoading(true);
+            const data = await RapportNcService.getMonthlyStats();
+            setRapportNcData({
+              currentMonthCount: data.current_month_count,
+              previousMonthCount: data.previous_month_count,
+              countVariation: data.count_variation,
+              isCountIncrease: data.is_count_increase,
+              
+              currentTotalQteNc: data.current_total_qte_nc,
+              previousTotalQteNc: data.previous_total_qte_nc,
+              qteVariation: data.qte_variation,
+              isQteIncrease: data.is_qte_increase,
+              
+              currentAvgQteNc: data.current_avg_qte_nc,
+              previousAvgQteNc: data.previous_avg_qte_nc,
+              currentMinQteNc: data.current_min_qte_nc,
+              currentMaxQteNc: data.current_max_qte_nc,
+              
+              currentUniqueClients: data.current_unique_clients,
+              previousUniqueClients: data.previous_unique_clients,
+              currentUniqueArticles: data.current_unique_articles,
+              previousUniqueArticles: data.previous_unique_articles,
+              
+              month: data.month,
+              previousMonth: data.previous_month
+            });
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Erreur inconnue');
+            console.error('Erreur:', err);
+          } finally {
+            setLoading(false);
+          }
+        }
+      );
     };
 
     fetchRapportNcData();
-  }, []);
+
+    return () => {
+      cancel();
+    };
+  }, [executeDebouncedApi, cancel]);
 
   if (loading) {
     return (
