@@ -16,31 +16,27 @@ const RapportNcService = {
 
 export default function CountRapportNC() {
   const [rapportNcData, setRapportNcData] = useState({
-    // Données principales
+
     currentMonthCount: 0,
     previousMonthCount: 0,
     countVariation: 0,
     isCountIncrease: false,
     
-    // Statistiques quantitatives
     currentTotalQteNc: 0,
     previousTotalQteNc: 0,
     qteVariation: 0,
     isQteIncrease: false,
     
-    // Statistiques moyennes
     currentAvgQteNc: 0,
     previousAvgQteNc: 0,
     currentMinQteNc: 0,
     currentMaxQteNc: 0,
     
-    // Diversité
     currentUniqueClients: 0,
     previousUniqueClients: 0,
     currentUniqueArticles: 0,
     previousUniqueArticles: 0,
     
-    // Métadonnées
     month: '',
     previousMonth: ''
   });

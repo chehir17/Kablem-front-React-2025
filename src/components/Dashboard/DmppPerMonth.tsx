@@ -10,6 +10,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import axios from "axios";
+import { useApiDebounce } from "../../hooks/useApiDebounce";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -19,41 +20,50 @@ const DmppPerMonth = () => {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
     useEffect(() => {
         const fetchDmppData = async () => {
-            try {
-                setLoading(true);
-                console.log(`🔄 Chargement des données DMPP pour ${selectedYear}...`);
+            await executeDebouncedApi(
+                async () => {
+                    try {
+                        setLoading(true);
+                        setError(null);
 
-                const response = await axios.get(`http://localhost:8000/api/dmpp/mensuel/${selectedYear}`);
-                console.log('✅ Réponse API reçue:', response.data);
+                        const response = await axios.get(`http://localhost:8000/api/dmpp/mensuel/${selectedYear}`);
+                        console.log('Réponse API reçue:', response.data);
 
-                if (response.data && Array.isArray(response.data.dmppData)) {
-                    setDmppData(response.data.dmppData);
-                    setAnnee(response.data.annee || selectedYear.toString());
-                } else if (Array.isArray(response.data)) {
-                    setDmppData(response.data);
-                    setAnnee(selectedYear.toString());
-                } else {
-                    throw new Error('Format de données invalide');
+                        if (response.data && Array.isArray(response.data.dmppData)) {
+                            setDmppData(response.data.dmppData);
+                            setAnnee(response.data.annee || selectedYear.toString());
+                        } else if (Array.isArray(response.data)) {
+                            setDmppData(response.data);
+                            setAnnee(selectedYear.toString());
+                        } else {
+                            throw new Error('Format de données invalide');
+                        }
+
+                    } catch (err: any) {
+                        console.error(' Erreur:', err);
+                        const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
+                        setError(`Erreur: ${errorMessage}`);
+                        setDmppData([]);
+                    } finally {
+                        setLoading(false);
+                    }
                 }
-
-            } catch (err: any) {
-                console.error('❌ Erreur:', err);
-                const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
-                setError(`Erreur: ${errorMessage}`);
-                setDmppData([]);
-            } finally {
-                setLoading(false);
-            }
+            );
         };
 
         fetchDmppData();
-    }, [selectedYear]);
+
+        return () => {
+            cancel();
+        };
+    }, [selectedYear, executeDebouncedApi, cancel]);
 
     const chartData = {
         labels: dmppData.map(d => d.mois),
@@ -71,7 +81,9 @@ const DmppPerMonth = () => {
     const options = {
         responsive: true,
         plugins: {
-            legend: { display: false },
+            legend: {
+                position: "top" as const,
+            },
             title: {
                 display: true,
                 text: `DMPP émises en ${selectedYear}`,
@@ -117,7 +129,7 @@ const DmppPerMonth = () => {
                         id="year-select"
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-300 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     >
                         {years.map(year => (
                             <option key={year} value={year}>
@@ -138,7 +150,7 @@ const DmppPerMonth = () => {
                 <Bar data={chartData} options={options} />
             </div>
 
-            <div className="mt-4 pb-3 text-center text-sm text-gray-500">
+            <div className="mt-4 pb-6 text-center text-sm text-gray-500 dark:text-white/70">
                 Total {selectedYear}: {totalDmpp} DMPP
             </div>
         </div>

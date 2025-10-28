@@ -10,6 +10,8 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import axios from "axios";
+import { color } from "framer-motion";
+import { useApiDebounce } from "../../hooks/useApiDebounce";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -36,39 +38,48 @@ export function DMPPOpenVsClosed() {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDark,] = useState(false);
+    const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
     useEffect(() => {
         const fetchDmppData = async () => {
-            try {
-                setLoading(true);
-                console.log(`🔄 Chargement des stats DMPP ouvertes vs clôturées pour ${selectedYear}...`);
-                
-                const response = await axios.get<ApiResponse>(`http://localhost:8000/api/dmpp/open-vs-closed/${selectedYear}`);
-                console.log('✅ Réponse API reçue:', response.data);
-                
-                if (response.data && Array.isArray(response.data.dmppData)) {
-                    setDmppData(response.data.dmppData);
-                    setAnnee(response.data.annee);
-                    setTotals(response.data.totals);
-                } else {
-                    throw new Error('Format de données invalide');
+            await executeDebouncedApi(
+                async () => {
+                    try {
+                        setLoading(true);
+
+                        const response = await axios.get<ApiResponse>(`http://localhost:8000/api/dmpp/open-vs-closed/${selectedYear}`);
+                        console.log('Réponse API reçue:', response.data);
+
+                        if (response.data && Array.isArray(response.data.dmppData)) {
+                            setDmppData(response.data.dmppData);
+                            setAnnee(response.data.annee);
+                            setTotals(response.data.totals);
+                        } else {
+                            throw new Error('Format de données invalide');
+                        }
+
+                    } catch (err: any) {
+                        console.error('Erreur:', err);
+                        const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
+                        setError(`Erreur: ${errorMessage}`);
+                        setDmppData([]);
+                    } finally {
+                        setLoading(false);
+                    }
                 }
-                
-            } catch (err: any) {
-                console.error('❌ Erreur:', err);
-                const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
-                setError(`Erreur: ${errorMessage}`);
-                setDmppData([]);
-            } finally {
-                setLoading(false);
-            }
+            );
         };
 
         fetchDmppData();
-    }, [selectedYear]);
+
+        return () => {
+            cancel();
+        };
+    }, [selectedYear, executeDebouncedApi, cancel]);
 
     const chartData = {
         labels: dmppData.map((d) => d.mois),
@@ -138,7 +149,7 @@ export function DMPPOpenVsClosed() {
                 <div className="card-title text-lg font-semibold text-gray-600 dark:text-gray-200">
                     DMPP : Ouvertes vs Clôturées
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                     <label htmlFor="year-select-open-closed" className="text-sm text-gray-600 dark:text-gray-400">
                         Année:
@@ -147,7 +158,7 @@ export function DMPPOpenVsClosed() {
                         id="year-select-open-closed"
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-300 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     >
                         {years.map(year => (
                             <option key={year} value={year}>
@@ -157,15 +168,15 @@ export function DMPPOpenVsClosed() {
                     </select>
                 </div>
             </div>
-            
+
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                     <p className="text-red-700 text-sm">{error}</p>
                 </div>
             )}
-            
+
             <Bar data={chartData} options={options} />
-            
+
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-1 text-center">
                 <div className="p-1 bg-red-50 dark:bg-red-900/20 rounded-lg">
                     <div className="text-sm text-red-600 dark:text-red-400">Ouvertes</div>
@@ -180,10 +191,10 @@ export function DMPPOpenVsClosed() {
                     <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{totals.total}</div>
                 </div>
             </div>
-            
+
             {totals.total > 0 && (
                 <div className="mt-3 text-center">
-                    <div className="text-sm text-gray-500">
+                    <div className="mt-4 pb-3 text-center text-sm text-gray-500 dark:text-white/70">
                         Taux de clôture: {((totals.termine / totals.total) * 100).toFixed(1)}%
                     </div>
                 </div>

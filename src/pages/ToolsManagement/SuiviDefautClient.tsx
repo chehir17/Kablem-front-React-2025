@@ -113,6 +113,7 @@ export default function SuiviIncidentClient() {
         { name: "Num. Réclamation Client", selector: (row) => row.num_rec_cli, sortable: true },
         { name: "Date Réclamation Client", selector: (row) => row.date_rec_cli ? new Date(row.date_rec_cli).toLocaleDateString() : "—", sortable: true },
         { name: "Zone", selector: (row) => row.zone, sortable: true },
+        { name: "Nombre des Piéces kO", selector: (row) => row.nbr_piec_ko, sortable: true },
         { name: "Client", selector: (row) => row.nom_client!, sortable: true },
         { name: "Référence Produit ", selector: (row) => row.ref!, sortable: true },
         { name: "Projet", selector: (row) => row.nom_projet, sortable: true },

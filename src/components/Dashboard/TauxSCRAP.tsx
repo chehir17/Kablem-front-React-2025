@@ -11,6 +11,7 @@ import {
     TooltipItem,
 } from "chart.js";
 import axios from "axios";
+import { useApiDebounce } from "../../hooks/useApiDebounce";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -38,39 +39,46 @@ const ScrapByZoneChart = () => {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
     useEffect(() => {
         const fetchScrapData = async () => {
-            try {
-                setLoading(true);
-                console.log(`🔄 Chargement des données scrap par zone pour ${selectedYear}...`);
-                
-                const response = await axios.get<ApiResponse>(`http://localhost:8000/api/scrap/by-zone/${selectedYear}`);
-                console.log('✅ Réponse API scrap par zone:', response.data);
-                
-                if (response.data && Array.isArray(response.data.scrapData)) {
-                    setScrapData(response.data.scrapData);
-                    setAnnee(response.data.annee);
-                    setTotals(response.data.totals);
-                } else {
-                    throw new Error('Format de données invalide');
+            await executeDebouncedApi(
+                async () => {
+                    try {
+                        setLoading(true);
+                        
+                        const response = await axios.get<ApiResponse>(`http://localhost:8000/api/scrap/by-zone/${selectedYear}`);
+                        
+                        if (response.data && Array.isArray(response.data.scrapData)) {
+                            setScrapData(response.data.scrapData);
+                            setAnnee(response.data.annee);
+                            setTotals(response.data.totals);
+                        } else {
+                            throw new Error('Format de données invalide');
+                        }
+                        
+                    } catch (err: any) {
+                        console.error(' Erreur:', err);
+                        const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
+                        setError(`Erreur: ${errorMessage}`);
+                        setScrapData([]);
+                    } finally {
+                        setLoading(false);
+                    }
                 }
-                
-            } catch (err: any) {
-                console.error('❌ Erreur:', err);
-                const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
-                setError(`Erreur: ${errorMessage}`);
-                setScrapData([]);
-            } finally {
-                setLoading(false);
-            }
+            );
         };
 
         fetchScrapData();
-    }, [selectedYear]);
+
+        return () => {
+            cancel();
+        };
+    }, [selectedYear, executeDebouncedApi, cancel]);
 
     const labels = scrapData.map((item) => item.zone_affe_prob);
     const values = scrapData.map((item) => item.qnt_scrap);

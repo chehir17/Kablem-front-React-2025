@@ -15,6 +15,10 @@ export default function TauxClotureTot() {
   const [dataDoughnut, setDataDoughnut] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const formatPercentage = (value: number) => {
+    return parseFloat(value.toFixed(2));
+  };
+
   useEffect(() => {
     const fetchactionDone = async () => {
       try {
@@ -28,8 +32,8 @@ export default function TauxClotureTot() {
 
         setDataDoughnut({
           labels: [
-            `Done ${done}%`,
-            `En attente ${pending}%`,
+            `Done ${formatPercentage(done)}%`,
+            `En attente ${formatPercentage(pending)}%`,
           ],
           datasets: [
             {
@@ -88,14 +92,14 @@ export default function TauxClotureTot() {
               <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
               Actions Done
             </div>
-            <span>{dataDoughnut.datasets[0].data[0]}%</span>
+            <span>{formatPercentage(dataDoughnut.datasets[0].data[0])}%</span>
           </li>
           <li className="flex items-center justify-between dark:text-gray-300">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
               Actions en attente
             </div>
-            <span>{dataDoughnut.datasets[0].data[1]}%</span>
+            <span>{formatPercentage(dataDoughnut.datasets[0].data[1])}%</span>
           </li>
         </ul>
       </div>

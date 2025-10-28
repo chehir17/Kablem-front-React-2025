@@ -13,6 +13,7 @@ import {
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
 import axios from "axios";
+import { useApiDebounce } from "../../hooks/useApiDebounce";
 
 ChartJS.register(
     CategoryScale,
@@ -30,43 +31,42 @@ const ScrapCostOverTime = () => {
     const [chartData, setChartData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [availableYears, setAvailableYears] = useState<number[]>([]);
-    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const [CoutselectedYear, setCoutselectedYear] = useState<number>(new Date().getFullYear());
     const [error, setError] = useState<string | null>(null);
+    const { executeDebouncedApi, cancel } = useApiDebounce(500);
 
-    // Récupérer les années disponibles
     const fetchAvailableYears = async () => {
         try {
             setError(null);
             const response = await axios.get('http://localhost:8000/api/scrap/available-years');
-            console.log("✅ Réponse années disponibles:", response.data);
-            
-            if (response.data.success) {
-                setAvailableYears(response.data.years);
-            } else {
-                setError("Erreur lors du chargement des années");
-                setAvailableYears([2023, 2024, 2025]);
-            }
-        } catch (error) {
+            console.log(" Réponse années disponibles:", response.data);
+
+            const years = response.data.years || [2023, 2024, 2025];
+            setAvailableYears(years);
+
+        } catch (error: any) {
             console.error("Erreur lors du chargement des années:", error);
-            setError("Impossible de charger les années");
+            if (error.response?.status === 429) {
+                setError("Trop de requêtes - Veuillez patienter quelques secondes");
+            } else {
+                setError("Impossible de charger les années");
+            }
             setAvailableYears([2023, 2024, 2025]);
         }
     };
 
-    // Fonction pour adapter les données selon la structure de réponse
     const adaptDataToChart = (apiData: any) => {
-        console.log("🔧 Adaptation des données:", apiData);
+        console.log(" Adaptation des données:", apiData);
 
-        // Si la réponse a la structure standard avec success: true
         if (apiData.success && Array.isArray(apiData.data)) {
             return {
                 labels: apiData.data.map((d: any) => d.date_prod),
                 datasets: [
                     {
                         label: "Coût du Scrap (€)",
-                        data: apiData.data.map((d: any) => ({ 
-                            x: d.date_prod, 
-                            y: d.cout_final 
+                        data: apiData.data.map((d: any) => ({
+                            x: d.date_prod,
+                            y: d.cout_final
                         })),
                         borderColor: "#4F46E5",
                         backgroundColor: "rgba(79, 70, 229, 0.2)",
@@ -79,16 +79,15 @@ const ScrapCostOverTime = () => {
             };
         }
 
-        // Si la réponse a une structure différente mais contient des données
         if (Array.isArray(apiData)) {
             return {
                 labels: apiData.map((d: any) => d.date_prod || d.date),
                 datasets: [
                     {
                         label: "Coût du Scrap (€)",
-                        data: apiData.map((d: any) => ({ 
-                            x: d.date_prod || d.date, 
-                            y: d.cout_final || d.cost || d.total 
+                        data: apiData.map((d: any) => ({
+                            x: d.date_prod || d.date,
+                            y: d.cout_final || d.cost || d.total
                         })),
                         borderColor: "#4F46E5",
                         backgroundColor: "rgba(79, 70, 229, 0.2)",
@@ -100,17 +99,15 @@ const ScrapCostOverTime = () => {
                 ],
             };
         }
-
-        // Si c'est un objet avec une propriété data
         if (apiData.data && Array.isArray(apiData.data)) {
             return {
                 labels: apiData.data.map((d: any) => d.date_prod || d.date),
                 datasets: [
                     {
                         label: "Coût du Scrap (€)",
-                        data: apiData.data.map((d: any) => ({ 
-                            x: d.date_prod || d.date, 
-                            y: d.cout_final || d.cost || d.total 
+                        data: apiData.data.map((d: any) => ({
+                            x: d.date_prod || d.date,
+                            y: d.cout_final || d.cost || d.total
                         })),
                         borderColor: "#4F46E5",
                         backgroundColor: "rgba(79, 70, 229, 0.2)",
@@ -126,43 +123,45 @@ const ScrapCostOverTime = () => {
         return null;
     };
 
-    // Récupérer les données du backend
     const fetchScrapData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await axios.get(`http://localhost:8000/api/scrap/cost-over-time`, {
-                params: {
-                    timeUnit: timeUnit,
-                    year: selectedYear
+        await executeDebouncedApi(
+            async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await axios.get(`http://localhost:8000/api/scrap/cost-over-time`, {
+                        params: {
+                            timeUnit: timeUnit,
+                            year: CoutselectedYear
+                        }
+                    });
+
+                    const adaptedData = adaptDataToChart(response.data);
+
+                    if (adaptedData) {
+                        setChartData(adaptedData);
+                    } else {
+                        setError("Impossible d'adapter les données reçues");
+                        console.warn("Structure non reconnue:", response.data);
+                    }
+
+                } catch (error: any) {
+                    console.error(" Erreur lors du chargement des données:", error);
+                    if (error.response?.status === 429) {
+                        setError("Trop de requêtes - Veuillez patienter quelques secondes avant de réessayer");
+                    } else if (error.response) {
+                        console.error("Détails de l'erreur:", error.response.data);
+                        setError(`Erreur ${error.response.status}: ${error.response.statusText}`);
+                    } else if (error.request) {
+                        setError("Pas de réponse du serveur");
+                    } else {
+                        setError("Erreur de configuration de la requête");
+                    }
+                } finally {
+                    setLoading(false);
                 }
-            });
-            
-            console.log("✅ Réponse API complète:", response);
-            console.log("✅ Données reçues:", response.data);
-
-            const adaptedData = adaptDataToChart(response.data);
-            
-            if (adaptedData) {
-                setChartData(adaptedData);
-            } else {
-                setError("Impossible d'adapter les données reçues");
-                console.warn("Structure non reconnue:", response.data);
             }
-
-        } catch (error: any) {
-            console.error("❌ Erreur lors du chargement des données:", error);
-            if (error.response) {
-                console.error("Détails de l'erreur:", error.response.data);
-                setError(`Erreur ${error.response.status}: ${error.response.statusText}`);
-            } else if (error.request) {
-                setError("Pas de réponse du serveur");
-            } else {
-                setError("Erreur de configuration de la requête");
-            }
-        } finally {
-            setLoading(false);
-        }
+        );
     };
 
     useEffect(() => {
@@ -171,7 +170,11 @@ const ScrapCostOverTime = () => {
 
     useEffect(() => {
         fetchScrapData();
-    }, [timeUnit, selectedYear]);
+
+        return () => {
+            cancel();
+        };
+    }, [timeUnit, CoutselectedYear, executeDebouncedApi, cancel]);
 
     const options = {
         responsive: true,
@@ -181,11 +184,11 @@ const ScrapCostOverTime = () => {
             },
             title: {
                 display: true,
-                text: `Coût du Scrap - ${selectedYear} (Vue par ${timeUnit})`,
+                text: `Coût du Scrap - ${CoutselectedYear} (Vue par ${timeUnit})`,
             },
             tooltip: {
                 callbacks: {
-                    label: function(context: any) {
+                    label: function (context: any) {
                         return `Coût: ${context.parsed.y}€`;
                     }
                 }
@@ -220,8 +223,14 @@ const ScrapCostOverTime = () => {
 
     if (loading) {
         return (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
-                <div className="text-gray-600">Chargement des données scrap...</div>
+            <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+                <div className="animate-pulse">
+                    <div className="h-6 bg-gray-300 rounded w-1/2 mb-4"></div>
+                    <div className="h-64 bg-gray-300 rounded"></div>
+                </div>
+                <p className="text-center text-sm text-gray-500 mt-2">
+                    Chargement des données scrap {CoutselectedYear}...
+                </p>
             </div>
         );
     }
@@ -235,8 +244,8 @@ const ScrapCostOverTime = () => {
 
                 <div className="flex gap-2">
                     <select
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        value={CoutselectedYear}
+                        onChange={(e) => setCoutselectedYear(Number(e.target.value))}
                         className="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-gray-200"
                     >
                         {availableYears.map(year => (
@@ -257,10 +266,16 @@ const ScrapCostOverTime = () => {
             </div>
 
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-                    <strong>Erreur:</strong> {error}
+                <div className={`px-4 py-3 rounded mb-4 ${error.includes("Trop de requêtes")
+                        ? "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                        : "bg-red-50 border border-red-200 text-red-700"
+                    }`}>
+                    <strong>{error.includes("Trop de requêtes") ? "Attention:" : "Erreur:"}</strong> {error}
                     <div className="text-sm mt-1">
-                        Vérifiez la console pour plus de détails
+                        {error.includes("Trop de requêtes")
+                            ? "Le système se protège contre les requêtes trop rapides. Réessayez dans quelques secondes."
+                            : "Vérifiez la console pour plus de détails"
+                        }
                     </div>
                 </div>
             )}

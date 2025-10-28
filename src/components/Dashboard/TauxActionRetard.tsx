@@ -9,7 +9,6 @@ import {
 import DownloadChart from "../../utils/DownloadChartProps ";
 import axios from "axios";
 
-
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function TauxActionRetard() {
@@ -17,7 +16,9 @@ export default function TauxActionRetard() {
     const chartRef = useRef<any>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
-
+    const formatPercentage = (value: number) => {
+        return parseFloat(value.toFixed(2));
+    };
 
     useEffect(() => {
         const fetchActionEnretard = async () => {
@@ -26,9 +27,9 @@ export default function TauxActionRetard() {
                 const response = await axios.get('http://localhost:8000/api/actionOnRetard');
                 const cnqData = response.data;
 
-                const done = cnqData[0];
-                const notDone = cnqData[1];
-                const retard = cnqData[2];
+                const done = formatPercentage(cnqData[0]);
+                const notDone = formatPercentage(cnqData[1]);
+                const retard = formatPercentage(cnqData[2]);
 
                 setDataDoughnut({
                     labels: [
@@ -47,14 +48,12 @@ export default function TauxActionRetard() {
                 });
             } catch (error) {
                 console.error("Erreur lors de la récupération des données En retard", error);
-
             } finally {
                 setLoading(false);
             }
         }
         fetchActionEnretard();
     }, []);
-
 
     if (!dataDoughnut)
         return (
@@ -90,11 +89,24 @@ export default function TauxActionRetard() {
                 </div>
             </div>
 
-            <div className="h-80 w-80 mx-auto">
+            <div className="h-80 mx-auto">
                 <Doughnut
                     ref={chartRef}
                     data={dataDoughnut}
-                    options={{ responsive: true, maintainAspectRatio: false }}
+                    options={{ 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context: any) {
+                                        const value = context.parsed;
+                                        return `${context.label}: ${formatPercentage(value)}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }}
                 />
             </div>
 

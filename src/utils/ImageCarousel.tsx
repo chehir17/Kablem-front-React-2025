@@ -64,7 +64,7 @@ export default function ImageCarousel({ images }: ImageCarouselProps) {
               <img
                 src={img.src}
                 alt={img.alt}
-                className="w-20 h-20 object-cover rounded-lg border"
+                className="w-17 h-17 object-cover rounded-lg border"
               />
             </div>
           ))}
