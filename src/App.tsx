@@ -35,6 +35,7 @@ import ProtectedRoute from "./utils/ProtectedRoute";
 import AdminRoute from "./utils/AdminRoute";
 import Error500 from "./pages/OtherPage/Error500";
 import LotPage from "./pages/DataManagment/Lot";
+import StockPage from "./pages/Stock/StockPage";
 
 export default function App() {
   return (
@@ -146,6 +147,14 @@ export default function App() {
               element={
                 <AdminRoute>
                   <Client />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/stocks"
+              element={
+                <AdminRoute>
+                  <StockPage />
                 </AdminRoute>
               }
             />

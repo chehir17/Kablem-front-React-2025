@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
       { name: "Lignes", path: "/lignes", pro: false },
       { name: "Pièces Livrées", path: "/pieces-livrees", pro: false },
       { name: "Historique des Tâches", path: "/historique-taches", pro: false },
+      { name: "Stock Visualisation", path: "/stocks", pro: false },
     ],
   },
   {
