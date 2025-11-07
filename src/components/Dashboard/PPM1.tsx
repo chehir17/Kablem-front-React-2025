@@ -61,13 +61,15 @@ export default function PpmClient() {
   const [chartData, setChartData] = useState<ChartData>(emptyChartData);
   const [hasData, setHasData] = useState(false);
   const [isDark] = useState(false);
-  const { executeDebouncedApi, loading, error, cancel } = useApiDebounce(500);
+  const { executeDebouncedApi, loading, error: apiError, cancel } = useApiDebounce(10000);
 
   useEffect(() => {
     const fetchPpm1Data = async () => {
       await executeDebouncedApi(
         async () => {
-          const response = await axios.get('http://localhost:8000/api/ppm1');
+          const response = await axios.get('http://localhost:8000/api/ppm1', {
+            timeout: 15000,
+          });
           const Ppm = response.data;
 
           if (Ppm && Array.isArray(Ppm) && Ppm.length > 0) {
@@ -102,7 +104,9 @@ export default function PpmClient() {
             console.error("Erreur API PPM1:", err);
             setChartData(emptyChartData);
             setHasData(false);
-          }
+          },
+          maxRetries: 2,
+          retryDelay: 10000
         }
       );
     };
@@ -113,6 +117,12 @@ export default function PpmClient() {
       cancel();
     };
   }, [executeDebouncedApi, cancel]);
+
+  useEffect(() => {
+    if (apiError) {
+      console.log("Erreur API détectée:", apiError);
+    }
+  }, [apiError]);
 
   const options: any = {
     responsive: true,
@@ -169,30 +179,62 @@ export default function PpmClient() {
     );
   }
 
+
+  if (apiError || !hasData) {
+    return (
+      <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-200">
+            Courbe de PPM client
+          </h3>
+        </div>
+
+        <div className="h-80 flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto w-24 h-24 mb-4 text-gray-400">
+              {apiError ? (
+
+                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+              ) : (
+
+                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              )}
+            </div>
+            <h4 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+              {apiError ? "Erreur de chargement" : "No data to display"}
+            </h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {apiError
+                ? "Impossible de charger les données PPM pour le moment"
+                : "Aucune donnée PPM disponible pour le moment"
+              }
+            </p>
+            {apiError && (
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Réessayer
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
       <h3 className="text-md font-semibold text-gray-600 dark:text-gray-200">
         Courbe de PPM client
       </h3>
-      
-      {error && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-4">
-          <strong>Information:</strong> {error}
-        </div>
-      )}
 
       <div className="h-80">
-        {hasData ? (
-          <Line data={chartData} options={options} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-500">
-              <p className="text-lg mb-2">📊</p>
-              <p>Aucune donnée PPM disponible</p>
-              <p className="text-sm mt-1">Vérifiez que les données existent pour la période sélectionnée</p>
-            </div>
-          </div>
-        )}
+        <Line data={chartData} options={options} />
       </div>
     </div>
   );

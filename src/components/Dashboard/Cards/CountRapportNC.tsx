@@ -7,7 +7,9 @@ import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const RapportNcService = {
   getMonthlyStats: async () => {
-    const response = await axios.get('http://localhost:8000/api/monthly-stats-nc');
+    const response = await axios.get('http://localhost:8000/api/monthly-stats-nc',{
+      timeout:10000,
+    });
     if (!response.data) {
       throw new Error('Erreur lors de la récupération des statistiques NC');
     }
@@ -45,7 +47,7 @@ export default function CountRapportNC() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const { executeDebouncedApi, cancel } = useApiDebounce(500);
+  const { executeDebouncedApi, cancel } = useApiDebounce(10000);
 
   useEffect(() => {
     const fetchRapportNcData = async () => {

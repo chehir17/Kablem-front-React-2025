@@ -39,7 +39,7 @@ const ScrapByZoneChart = () => {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const { executeDebouncedApi, cancel } = useApiDebounce(500);
+    const { executeDebouncedApi, cancel, error: apiError } = useApiDebounce(10000);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -50,17 +50,20 @@ const ScrapByZoneChart = () => {
                 async () => {
                     try {
                         setLoading(true);
-                        
-                        const response = await axios.get<ApiResponse>(`http://localhost:8000/api/scrap/by-zone/${selectedYear}`);
-                        
+                        setError(null);
+
+                        const response = await axios.get<ApiResponse>(`http://localhost:8000/api/scrap/by-zone/${selectedYear}`, {
+                            timeout: 10000,
+                        });
+
                         if (response.data && Array.isArray(response.data.scrapData)) {
                             setScrapData(response.data.scrapData);
-                            setAnnee(response.data.annee);
-                            setTotals(response.data.totals);
+                            setAnnee(response.data.annee || selectedYear.toString());
+                            setTotals(response.data.totals || { total_scrap: 0, total_registres: 0, zones_count: 0 });
                         } else {
                             throw new Error('Format de données invalide');
                         }
-                        
+
                     } catch (err: any) {
                         console.error(' Erreur:', err);
                         const errorMessage = err.response?.data?.message || err.message || 'Erreur inconnue';
@@ -80,9 +83,15 @@ const ScrapByZoneChart = () => {
         };
     }, [selectedYear, executeDebouncedApi, cancel]);
 
-    const labels = scrapData.map((item) => item.zone_affe_prob);
-    const values = scrapData.map((item) => item.qnt_scrap);
-    const percentages = scrapData.map((item) => item.pourcentage);
+    useEffect(() => {
+        if (apiError) {
+            console.log("Erreur API détectée:", apiError);
+        }
+    }, [apiError]);
+
+    const labels = scrapData?.map((item) => item.zone_affe_prob) || [];
+    const values = scrapData?.map((item) => item.qnt_scrap) || [];
+    const percentages = scrapData?.map((item) => item.pourcentage) || [];
 
     const data = {
         labels,
@@ -102,9 +111,10 @@ const ScrapByZoneChart = () => {
         plugins: {
             tooltip: {
                 callbacks: {
-                    afterLabel: function(context: TooltipItem<'bar'>) {
+                    afterLabel: function (context: TooltipItem<'bar'>) {
                         const index = context.dataIndex;
-                        if (index >= 0 && scrapData[index]) {
+
+                        if (index >= 0 && scrapData && scrapData[index]) {
                             return `Pourcentage: ${percentages[index]}% | Registres: ${scrapData[index].nb_registres}`;
                         }
                         return '';
@@ -147,6 +157,69 @@ const ScrapByZoneChart = () => {
         );
     }
 
+    if (error || !scrapData || scrapData.length === 0) {
+        return (
+            <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                    <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-200">
+                        SCRAP par zone affectée
+                    </h3>
+
+                    <div className="flex items-center gap-3">
+                        <label htmlFor="year-select-scrap" className="text-sm text-gray-600 dark:text-gray-400">
+                            Année:
+                        </label>
+                        <select
+                            id="year-select-scrap"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                            className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        >
+                            {years.map(year => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="h-80 flex flex-col items-center justify-center">
+                    <div className="text-center">
+                        <div className="mx-auto w-24 h-24 mb-4 text-gray-400">
+                            {error ? (
+                                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                </svg>
+                            ) : (
+                                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                </svg>
+                            )}
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+                            {error ? "Erreur de chargement" : "No data to display"}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {error
+                                ? "Impossible de charger les données scrap pour le moment"
+                                : `Aucune donnée scrap disponible pour ${selectedYear}`
+                            }
+                        </p>
+                        {error && (
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                            >
+                                Réessayer
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
 
@@ -154,7 +227,7 @@ const ScrapByZoneChart = () => {
                 <div className="card-title text-lg font-semibold text-gray-600 dark:text-gray-200">
                     SCRAP par zone affectée
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                     <label htmlFor="year-select-scrap" className="text-sm text-gray-600 dark:text-gray-400">
                         Année:
@@ -173,60 +246,48 @@ const ScrapByZoneChart = () => {
                     </select>
                 </div>
             </div>
-            
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-red-700 text-sm">{error}</p>
+
+            {data.labels && data.labels.length > 0 ? (
+                <Bar data={data} options={options} />
+            ) : (
+                <div className="h-64 flex items-center justify-center">
+                    <p className="text-gray-500">Aucune donnée à afficher</p>
                 </div>
             )}
 
-            {scrapData.length === 0 && !loading && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                    <p className="text-yellow-700 text-sm text-center">
-                        Aucune donnée scrap trouvée pour {selectedYear}
-                    </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="text-sm text-blue-600 dark:text-blue-400">Total Scrap</div>
+                    <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{totals.total_scrap}</div>
                 </div>
-            )}
-            
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="text-sm text-green-600 dark:text-green-400">Registres</div>
+                    <div className="text-lg font-bold text-green-700 dark:text-green-300">{totals.total_registres}</div>
+                </div>
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="text-sm text-purple-600 dark:text-purple-400">Zones</div>
+                    <div className="text-lg font-bold text-purple-700 dark:text-purple-300">{totals.zones_count}</div>
+                </div>
+            </div>
+
             {scrapData.length > 0 && (
-                <>
-                    <Bar data={data} options={options} />
-
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <div className="text-sm text-blue-600 dark:text-blue-400">Total Scrap</div>
-                            <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{totals.total_scrap}</div>
-                        </div>
-                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <div className="text-sm text-green-600 dark:text-green-400">Registres</div>
-                            <div className="text-lg font-bold text-green-700 dark:text-green-300">{totals.total_registres}</div>
-                        </div>
-                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                            <div className="text-sm text-purple-600 dark:text-purple-400">Zones</div>
-                            <div className="text-lg font-bold text-purple-700 dark:text-purple-300">{totals.zones_count}</div>
-                        </div>
-                    </div>
-
-                    {scrapData.length > 0 && (
-                        <div className="mt-4">
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Top 3 des zones les plus problématiques:
-                            </h4>
-                            <div className="space-y-1">
-                                {scrapData.slice(0, 3).map((zone, index) => (
-                                    <div key={zone.zone_affe_prob} className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-600 dark:text-gray-400">
-                                            {index + 1}. {zone.zone_affe_prob}
-                                        </span>
-                                        <span className="font-medium text-red-600 dark:text-red-400">
-                                            {zone.qnt_scrap} scrap ({zone.pourcentage}%)
-                                        </span>
-                                    </div>
-                                ))}
+                <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Top 3 des zones les plus problématiques:
+                    </h4>
+                    <div className="space-y-1">
+                        {scrapData.slice(0, 3).map((zone, index) => (
+                            <div key={zone.zone_affe_prob} className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                    {index + 1}. {zone.zone_affe_prob}
+                                </span>
+                                <span className="font-medium text-red-600 dark:text-red-400">
+                                    {zone.qnt_scrap} scrap ({zone.pourcentage}%)
+                                </span>
                             </div>
-                        </div>
-                    )}
-                </>
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     );

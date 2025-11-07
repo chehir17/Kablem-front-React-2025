@@ -73,7 +73,6 @@ function computePareto(records: ScrapRecord[]) {
   return { labels, quantities, cumulativePct, total };
 }
 
-// Données de démonstration par défaut
 const defaultDummyData: ScrapRecord[] = [
   { id: 1, classification_cause: "Mauvais réglage", qnt_scrap: 120 },
   { id: 2, classification_cause: "Fournisseur", qnt_scrap: 90 },
@@ -89,36 +88,55 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [hasData, setHasData] = useState(true);
+  const [yearsLoading, setYearsLoading] = useState(false);
 
-  const { executeDebouncedApi, loading, error, cancel } = useApiDebounce(500);
+  const { executeDebouncedApi, loading, error, cancel } = useApiDebounce(15000);
 
-  // Récupérer les données depuis l'API
   useEffect(() => {
     const fetchTopScrapCauses = async () => {
-      await executeDebouncedApi(
-        async () => {
-          const response = await axios.get('http://localhost:8000/api/scrap/causes/top', {
-            params: { year: selectedYear }
-          });
+      try {
+        await executeDebouncedApi(
+          async () => {
+            console.log('🔄 Chargement des causes du scrap...');
+            const response = await axios.get('http://localhost:8000/api/scrap/causes/top', {
+              params: { year: selectedYear },
+              timeout: 15000,
+            });
 
-          if (response.data.success && response.data.data.length > 0) {
-            setApiData(response.data.data);
-            setHasData(true);
-            return response.data;
-          } else {
-            setApiData(defaultDummyData);
-            setHasData(false);
-            throw new Error("Aucune donnée réelle trouvée pour cette année");
+            if (response.data.success) {
+              if (response.data.data && response.data.data.length > 0) {
+                console.log('✅ Données scrap chargées avec succès');
+                setApiData(response.data.data);
+                setHasData(true);
+              } else {
+                console.log('ℹ️ Aucune donnée réelle, utilisation des données démo');
+                setApiData(defaultDummyData);
+                setHasData(false);
+              }
+              return response.data;
+            } else {
+              console.log('⚠️ Réponse API non réussie, utilisation des données démo');
+              setApiData(defaultDummyData);
+              setHasData(false);
+              return { data: defaultDummyData, isDemo: true };
+            }
+          },
+          {
+            onError: (err) => {
+              console.error("❌ Erreur API scrap:", err);
+              console.log('🔄 Utilisation des données démo suite à une erreur');
+              setApiData(defaultDummyData);
+              setHasData(false);
+            },
+            maxRetries: 2,
+            retryDelay: 8000
           }
-        },
-        {
-          onError: (err) => {
-            console.error("Erreur API:", err);
-            setApiData(defaultDummyData);
-            setHasData(false);
-          }
-        }
-      );
+        );
+      } catch (error) {
+        console.error("❌ Erreur lors de l'exécution:", error);
+        setApiData(defaultDummyData);
+        setHasData(false);
+      }
     };
 
     fetchTopScrapCauses();
@@ -128,24 +146,34 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
     };
   }, [selectedYear, executeDebouncedApi, cancel]);
 
-  // Récupérer les années disponibles
   useEffect(() => {
     const fetchYears = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/scrap/causes/years');
+        setYearsLoading(true);
+        console.log('🔄 Chargement des années disponibles...');
+        const response = await axios.get('http://localhost:8000/api/scrap/causes/years', {
+          timeout: 15000,
+        });
+        
         if (response.data.success) {
+          console.log('✅ Années chargées avec succès');
           setAvailableYears(response.data.years);
+        } else {
+          console.log('⚠️ Réponse années non réussie, utilisation année courante');
+          setAvailableYears([new Date().getFullYear()]);
         }
       } catch (err) {
-        console.error("Erreur lors du chargement des années:", err);
+        console.error("❌ Erreur lors du chargement des années:", err);
+        console.log('🔄 Utilisation année courante suite à erreur');
         setAvailableYears([new Date().getFullYear()]);
+      } finally {
+        setYearsLoading(false);
       }
     };
 
     fetchYears();
   }, []);
 
-  // Toujours utiliser apiData qui a une valeur par défaut
   const source: ScrapRecord[] = apiData;
 
   const { labels, quantities, cumulativePct } = useMemo(
@@ -153,9 +181,7 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
     [source]
   );
 
-  // S'assurer que chartData n'est jamais null
   const chartData = useMemo(() => {
-    // Si pas de labels, utiliser des données par défaut pour éviter l'erreur
     if (labels.length === 0) {
       const defaultData = computePareto(defaultDummyData);
       return {
@@ -236,7 +262,7 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
       legend: { position: "top" as const },
       title: {
         display: true,
-        text: `Top 7 Causes du Scrap - ${selectedYear}`
+        text: `Top 7 Causes du Scrap - ${selectedYear}${!hasData ? ' (Données démo)' : ''}`
       },
       tooltip: {
         callbacks: {
@@ -289,6 +315,11 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
         <p className="text-center text-sm text-gray-500 mt-2">
           Chargement des 7 causes principales du scrap {selectedYear}...
         </p>
+        {error && (
+          <p className="text-center text-sm text-yellow-600 mt-1">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
@@ -300,15 +331,20 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
           Top 7 Causes du Scrap
         </h3>
         <div className="flex items-center gap-2">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-gray-200"
-          >
-            {availableYears.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
+          {yearsLoading ? (
+            <div className="animate-pulse w-24 h-8 bg-gray-300 rounded"></div>
+          ) : (
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-gray-200"
+              disabled={availableYears.length === 0}
+            >
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          )}
           <div className="text-sm text-gray-500 dark:text-gray-200">
             Analyse 80/20 des causes principales
           </div>
@@ -317,13 +353,25 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
 
       {error && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-4">
-          <strong>Information:</strong> {error}
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <strong>Information:</strong>
+          </div>
+          <p className="mt-1 ml-7">{error}</p>
         </div>
       )}
 
       {!hasData && (
         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
-          <strong>Note:</strong> Affichage des données de démonstration
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <strong>Note:</strong>
+          </div>
+          <p className="mt-1 ml-7">Affichage des données de démonstration (aucune donnée réelle pour {selectedYear})</p>
         </div>
       )}
 
@@ -332,9 +380,15 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
           <Chart type="bar" data={chartData} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500 text-center">
-              Aucune donnée disponible pour le graphique
-            </p>
+            <div className="text-center">
+              <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-gray-500 text-lg mb-2">Aucune donnée disponible</p>
+              <p className="text-gray-400 text-sm">
+                Impossible de charger les données du graphique Pareto
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -342,6 +396,7 @@ export default function ParetoScrap({ data, height = 380 }: ParetoScrapProps) {
       <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
         <strong>Interprétation :</strong> Affichage des 7 causes principales du scrap par quantité totale.
         Les causes en début de graphique représentent les plus importantes à traiter en priorité selon la méthode 80/20.
+        {!hasData && " Données de démonstration utilisées."}
       </div>
     </div>
   );

@@ -33,12 +33,14 @@ const ScrapCostOverTime = () => {
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [CoutselectedYear, setCoutselectedYear] = useState<number>(new Date().getFullYear());
     const [error, setError] = useState<string | null>(null);
-    const { executeDebouncedApi, cancel } = useApiDebounce(500);
+    const { executeDebouncedApi, cancel } = useApiDebounce(11000);
 
     const fetchAvailableYears = async () => {
         try {
             setError(null);
-            const response = await axios.get('http://localhost:8000/api/scrap/available-years');
+            const response = await axios.get('http://localhost:8000/api/scrap/available-years', {
+                timeout: 11000,
+            });
             console.log(" Réponse années disponibles:", response.data);
 
             const years = response.data.years || [2023, 2024, 2025];
@@ -123,6 +125,10 @@ const ScrapCostOverTime = () => {
         return null;
     };
 
+    useEffect(() => {
+        fetchAvailableYears();
+    }, [CoutselectedYear]);
+
     const fetchScrapData = async () => {
         await executeDebouncedApi(
             async () => {
@@ -133,7 +139,8 @@ const ScrapCostOverTime = () => {
                         params: {
                             timeUnit: timeUnit,
                             year: CoutselectedYear
-                        }
+                        },
+                        timeout: 1100,
                     });
 
                     const adaptedData = adaptDataToChart(response.data);
@@ -157,6 +164,8 @@ const ScrapCostOverTime = () => {
                     } else {
                         setError("Erreur de configuration de la requête");
                     }
+
+                    setChartData(null);
                 } finally {
                     setLoading(false);
                 }
@@ -164,9 +173,7 @@ const ScrapCostOverTime = () => {
         );
     };
 
-    useEffect(() => {
-        fetchAvailableYears();
-    }, []);
+
 
     useEffect(() => {
         fetchScrapData();
@@ -235,6 +242,69 @@ const ScrapCostOverTime = () => {
         );
     }
 
+    if (error || !chartData || chartData.labels.length === 0) {
+        return (
+            <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                    <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-200">
+                        Courbe du coût total du scrap dans le temps
+                    </h3>
+
+                    <div className="flex items-center gap-3">
+                        <label htmlFor="year-select-scrap" className="text-sm text-gray-600 dark:text-gray-400">
+                            Année:
+                        </label>
+                        <select
+                            id="year-select-scrap"
+                            value={CoutselectedYear}
+                            onChange={(e) => setCoutselectedYear(Number(e.target.value))}
+                            className="px-3 py-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        >
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>
+                                    {year}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="h-80 flex flex-col items-center justify-center">
+                    <div className="text-center">
+                        <div className="mx-auto w-24 h-24 mb-4 text-gray-400">
+                            {error ? (
+                                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                </svg>
+                            ) : (
+                                <svg fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                </svg>
+                            )}
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+                            {error ? "Erreur de chargement" : "No data to display"}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {error
+                                ? "Impossible de charger les données scrap pour le moment"
+                                : `Aucune donnée scrap disponible pour ${CoutselectedYear}`
+                            }
+                        </p>
+                        {error && (
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                            >
+                                Réessayer
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
             <div className="flex justify-between items-center mb-4">
@@ -267,8 +337,8 @@ const ScrapCostOverTime = () => {
 
             {error && (
                 <div className={`px-4 py-3 rounded mb-4 ${error.includes("Trop de requêtes")
-                        ? "bg-yellow-50 border border-yellow-200 text-yellow-700"
-                        : "bg-red-50 border border-red-200 text-red-700"
+                    ? "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                    : "bg-red-50 border border-red-200 text-red-700"
                     }`}>
                     <strong>{error.includes("Trop de requêtes") ? "Attention:" : "Erreur:"}</strong> {error}
                     <div className="text-sm mt-1">

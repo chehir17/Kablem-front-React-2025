@@ -7,7 +7,9 @@ import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const ScrapService = {
   getMonthlyCost: async () => {
-    const response = await axios.get('http://localhost:8000/api/monthly-cost');
+    const response = await axios.get('http://localhost:8000/api/monthly-cost',{
+      timeout:10000,
+    });
     if (!response.data) {
       throw new Error('Erreur lors de la récupération du coût scrap');
     }
@@ -25,7 +27,7 @@ export default function ScrapCost() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { executeDebouncedApi, cancel } = useApiDebounce(500);
+  const { executeDebouncedApi, cancel } = useApiDebounce(10000);
 
   useEffect(() => {
     const fetchScrapCostData = async () => {

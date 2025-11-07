@@ -30,7 +30,9 @@ export default function MonthlyAuditChart() {
   useEffect(() => {
     const fetchAvailableYears = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/audits/available-years');
+        const response = await axios.get('http://localhost:8000/api/audits/available-years',{
+          timeout: 10000,
+        });
         if (response.data.success) {
           setAvailableYears(response.data.years);
           if (response.data.years.length > 0 && !response.data.years.includes(selectedYear)) {
@@ -53,7 +55,8 @@ export default function MonthlyAuditChart() {
       const response = await axios.get('http://localhost:8000/api/audits/monthly', {
         params: {
           year: selectedYear
-        }
+        },
+        timeout: 10000,
       });
 
       if (response.data.success) {
@@ -82,7 +85,7 @@ export default function MonthlyAuditChart() {
 
   useEffect(() => {
 
-    debouncedFetch(fetchAuditData, 500);
+    debouncedFetch(fetchAuditData, 10000);
 
     return () => {
       if (requestTimeoutRef.current) {
@@ -177,7 +180,7 @@ export default function MonthlyAuditChart() {
         </h3>
 
         <div className="flex items-center gap-2">
-          {/* Sélecteur d'année */}
+
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -188,7 +191,7 @@ export default function MonthlyAuditChart() {
             ))}
           </select>
 
-          {/* Dropdown pour le type d'audit */}
+
           <div className="relative inline-block">
             <button className="dropdown-toggle" onClick={toggleDropdown}>
               <MoreDotIcon className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 size-6" />

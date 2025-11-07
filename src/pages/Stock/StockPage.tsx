@@ -263,20 +263,20 @@ export default function StockPage() {
             cell: (row) => {
                 const articleDesignation = row.article?.nom_artc || row.article?.code_artc || 'Article';
                 return (
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <button
                             onClick={() => handleMouvement(row.id_article, articleDesignation, "ENTREE")}
-                            className="flex items-center gap-1 px-3 py-2 text-sm text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
+                            className="flex items-center gap-1 px-5 py-2 text-xs text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
                             title="Entrée de stock"
                         >
                             <Plus className="w-4 h-4" /> Entrée
-                        </button>
+                        </button> 
                         <button
                             onClick={() => handleMouvement(row.id_article, articleDesignation, "SORTIE")}
                             disabled={row.quantite_disponible === 0}
-                            className={`flex items-center gap-1 px-3 py-2 text-sm text-white rounded-lg transition-colors ${
+                            className={`flex items-center gap-1 px-5 py-2 text-xs text-white rounded-lg transition-colors ${
                                 row.quantite_disponible === 0 
-                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                    ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-red-500 hover:bg-red-600'
                             }`}
                             title={row.quantite_disponible === 0 ? "Stock épuisé" : "Sortie de stock"}
@@ -285,14 +285,14 @@ export default function StockPage() {
                         </button>
                         <button
                             onClick={() => viewHistorique(row.id_article, articleDesignation)}
-                            className="flex items-center gap-1 px-3 py-2 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
+                            className="flex items-center gap-1 px-3 py-2 text-xs text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
                             title="Voir l'historique"
                         >
                             <History className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => handleUpdateSeuil(row)}
-                            className="flex items-center gap-1 px-3 py-2 text-sm text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors"
+                            className="flex items-center gap-1 px-3 py-2 text-xs text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors"
                             title="Modifier le seuil"
                         >
                             <Settings className="w-4 h-4" />

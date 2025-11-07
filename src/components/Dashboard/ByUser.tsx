@@ -69,20 +69,20 @@ const ByUser: React.FC = () => {
   }
 
   return (
-      <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="card-body">
-          <h3 className="card-title text-lg font-semibold mb-4 text-gray-600 dark:text-gray-200">
-             Votre performance
-          </h3>
-          <div className="h-96">
-            {dataBar ? (
-              <Bar data={dataBar} options={barChartOptions} />
-            ) : (
-              <p>Aucune donnée trouvée</p>
-            )}
-          </div>
+    <div className="card rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="card-body">
+        <h3 className="card-title text-lg font-semibold mb-4 text-gray-600 dark:text-gray-200">
+          Votre performance
+        </h3>
+        <div className="h-96">
+          {dataBar ? (
+            <Bar data={dataBar} options={barChartOptions} />
+          ) : (
+            <p>Aucune donnée trouvée</p>
+          )}
         </div>
       </div>
+    </div>
   );
 };
 

@@ -20,7 +20,7 @@ const DmppPerMonth = () => {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const { executeDebouncedApi, cancel } = useApiDebounce(500);
+    const { executeDebouncedApi, cancel } = useApiDebounce(10000);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -33,7 +33,9 @@ const DmppPerMonth = () => {
                         setLoading(true);
                         setError(null);
 
-                        const response = await axios.get(`http://localhost:8000/api/dmpp/mensuel/${selectedYear}`);
+                        const response = await axios.get(`http://localhost:8000/api/dmpp/mensuel/${selectedYear}`, {
+                            timeout: 10000,
+                        });
                         console.log('Réponse API reçue:', response.data);
 
                         if (response.data && Array.isArray(response.data.dmppData)) {
@@ -146,8 +148,16 @@ const DmppPerMonth = () => {
                 </div>
             )}
 
+
+
             <div className="mt-5 pb-9">
-                <Bar data={chartData} options={options} />
+                {chartData && chartData.labels && chartData.labels.length > 0 ? (
+                    <Bar data={chartData} options={options} />
+                ) : (
+                    <div className="h-64 flex items-center justify-center">
+                        <p className="text-gray-500">Aucune donnée à afficher</p>
+                    </div>
+                )}
             </div>
 
             <div className="mt-4 pb-6 text-center text-sm text-gray-500 dark:text-white/70">

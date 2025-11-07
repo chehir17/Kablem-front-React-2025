@@ -7,7 +7,9 @@ import { useApiDebounce } from "../../../hooks/useApiDebounce";
 
 const ScrapService = {
   getMonthlyStats: async () => {
-    const response = await axios.get('http://localhost:8000/api/monthly-stats');
+    const response = await axios.get('http://localhost:8000/api/monthly-stats', {
+      timeout: 10000
+    });
     if (!response.data) {
       throw new Error('Erreur lors de la récupération des données scrap');
     }
@@ -23,16 +25,14 @@ export default function ScrapCount() {
     isIncrease: false,
     month: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { executeDebouncedApi, cancel } = useApiDebounce(500);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const { executeDebouncedApi, cancel, loading, error: apiError } = useApiDebounce(10000);
 
   useEffect(() => {
     const fetchScrapData = async () => {
-      await executeDebouncedApi(
-        async () => {
-          try {
-            setLoading(true);
+      try {
+        await executeDebouncedApi(
+          async () => {
             const data = await ScrapService.getMonthlyStats();
             setScrapData({
               currentMonthScrap: data.current_month_scrap,
@@ -41,14 +41,24 @@ export default function ScrapCount() {
               isIncrease: data.is_increase,
               month: data.month
             });
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erreur inconnue');
-            console.error('Erreur:', err);
-          } finally {
-            setLoading(false);
+            setLocalError(null);
+          },
+          {
+            onError: (err) => {
+
+              if (err.message.includes('Trop de requêtes')) {
+                setLocalError(err.message);
+              } else {
+                setLocalError('Erreur de chargement des données');
+              }
+            }
           }
+        );
+      } catch (err) {
+        if (err instanceof Error && !err.message.includes('Trop de requêtes') && !err.message.includes('Requête déjà en cours')) {
+          setLocalError('Erreur lors du chargement');
         }
-      );
+      }
     };
 
     fetchScrapData();
@@ -57,6 +67,8 @@ export default function ScrapCount() {
       cancel();
     };
   }, [executeDebouncedApi, cancel]);
+
+  const error = localError || apiError;
 
   if (loading) {
     return (
@@ -75,8 +87,13 @@ export default function ScrapCount() {
   if (error) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-md">
-        <div className="text-center text-red-600">
-          Erreur: {error}
+        <div className="text-center text-red-600 text-sm">
+          {error}
+          {error.includes('Trop de requêtes') && (
+            <div className="mt-2 text-xs">
+              Le système se protège contre les requêtes trop rapides.
+            </div>
+          )}
         </div>
       </div>
     );

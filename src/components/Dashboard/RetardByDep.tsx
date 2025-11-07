@@ -10,6 +10,7 @@ import {
   Legend,
 } from "chart.js";
 import axios from "axios";
+import { useApiDebounce } from "../../hooks/useApiDebounce";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -18,53 +19,62 @@ export default function RetardByDep() {
   const [isDark] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { executeDebouncedApi, cancel } = useApiDebounce(10000);
 
   useEffect(() => {
     const fetchActionRetard = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await axios.get('http://localhost:8000/api/bydep_retard');
-        const data = response.data;
+      await executeDebouncedApi(
+        async () => {
+          try {
+            setLoading(true);
+            setError(null);
+            const response = await axios.get('http://localhost:8000/api/bydep_retard',{
+              timeout: 10000,
+            });
+            const data = response.data;
 
-        console.log("✅ Données reçues:", data);
+            if (typeof data !== 'object' || data === null) {
+              throw new Error("Format de données invalide");
+            }
+            const labels = Object.keys(data);
+            const values = Object.values(data) as number[];
 
-        if (typeof data !== 'object' || data === null) {
-          throw new Error("Format de données invalide");
+            if (labels.length === 0) {
+              setChartData(null);
+              return;
+            }
+
+            setChartData({
+              labels: labels,
+              datasets: [
+                {
+                  label: "Plan d'action en retard",
+                  data: values,
+                  backgroundColor: "#fe7c96",
+                  borderColor: "rgba(0,0,0,0.2)",
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  hoverBackgroundColor: "#fe7c7cff",
+                },
+              ],
+            });
+
+          } catch (error) {
+            console.error(" Erreur lors de la récupération des données", error);
+            setError("Erreur lors du chargement des données");
+          } finally {
+            setLoading(false);
+          }
         }
-        const labels = Object.keys(data);
-        const values = Object.values(data) as number[];
-
-        if (labels.length === 0) {
-          setChartData(null);
-          return;
-        }
-
-        setChartData({
-          labels: labels,
-          datasets: [
-            {
-              label: "Plan d'action en retard",
-              data: values,
-              backgroundColor: "#fe7c96",
-              borderColor: "rgba(0,0,0,0.2)",
-              borderWidth: 1,
-              borderRadius: 10,
-              hoverBackgroundColor: "#fe7c7cff",
-            },
-          ],
-        });
-
-      } catch (error) {
-        console.error(" Erreur lors de la récupération des données", error);
-        setError("Erreur lors du chargement des données");
-      } finally {
-        setLoading(false);
-      }
+      )
     };
 
     fetchActionRetard();
-  }, []);
+
+    return () => {
+      cancel();
+    };
+  }, [executeDebouncedApi, cancel]);
 
   if (loading) {
     return (
@@ -112,60 +122,65 @@ export default function RetardByDep() {
       <h3 className="card-title text-md font-semibold mb-4 text-gray-600 dark:text-gray-200">
         Actions en retard par département
       </h3>
-
-      <Bar
-        data={chartData}
-        options={{
-          responsive: true,
-          indexAxis: "y",
-          plugins: {
-            legend: {
-              position: "top" as const,
-              labels: {
-                font: { size: 12, family: "Outfit, sans-serif" },
-                color: isDark ? "#3333" : "#797979ff"
-              },
-            },
-            title: {
-              display: true,
-              text: "Suivi des plans d'action en retard",
-              font: { size: 14, family: "Outfit, sans-serif", weight: "normal" },
-              color: isDark ? "#2222" : "#787878ff"
-            },
-            tooltip: {
-              callbacks: {
-                label: function (context: any) {
-                  return `${context.dataset.label}: ${context.parsed.x} action(s)`;
-                }
-              }
-            }
-          },
-          animation: {
-            duration: 1200,
-            easing: "easeOutBounce",
-            delay: (context: any) => context.dataIndex * 150,
-          },
-          scales: {
-            x: {
-              beginAtZero: true,
-              grid: { color: "rgba(200,200,200,0.2)" },
-              ticks: {
-                font: { size: 14, family: "Outfit, sans-serif" },
-                stepSize: 1
+      {
+        chartData &&
+        <Bar
+          data={chartData}
+          options={{
+            responsive: true,
+            indexAxis: "y",
+            plugins: {
+              legend: {
+                position: "top" as const,
+                labels: {
+                  font: { size: 12, family: "Outfit, sans-serif" },
+                  color: isDark ? "#3333" : "#797979ff"
+                },
               },
               title: {
                 display: true,
-                text: "Nombre d'actions en retard",
-                color: isDark ? "#1b1b1bff" : "#848282ff"
+                text: "Suivi des plans d'action en retard",
+                font: { size: 14, family: "Outfit, sans-serif", weight: "normal" },
+                color: isDark ? "#2222" : "#787878ff"
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context: any) {
+                    return `${context.dataset.label}: ${context.parsed.x} action(s)`;
+                  }
+                }
               }
             },
-            y: {
-              grid: { display: false },
-              ticks: { font: { size: 12, family: "Outfit, sans-serif" } },
+            animation: {
+              duration: 1200,
+              easing: "easeOutBounce",
+              delay: (context: any) => context.dataIndex * 150,
             },
-          },
-        }}
-      />
+            scales: {
+              x: {
+                beginAtZero: true,
+                grid: { color: "rgba(200,200,200,0.2)" },
+                ticks: {
+                  font: { size: 14, family: "Outfit, sans-serif" },
+                  stepSize: 1
+                },
+                title: {
+                  display: true,
+                  text: "Nombre d'actions en retard",
+                  color: isDark ? "#1b1b1bff" : "#848282ff"
+                }
+              },
+              y: {
+                grid: { display: false },
+                ticks: {
+                  font: { size: 12, family: "Outfit, sans-serif" },
+                  color: isDark ? "#3333" : "#797979ff"
+                },
+              },
+            },
+          }}
+        />
+      }
     </div>
   );
 }
