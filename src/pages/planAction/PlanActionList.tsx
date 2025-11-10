@@ -28,6 +28,7 @@ export default function PlanAction() {
     const [modif100, setmodif100] = useState(true);
     const [etat100, setetat100] = useState(true);
     const [user, setUser] = useState<any>(null);
+    const [addpalnaction, setAddplanaction] = useState<boolean>(false);
 
     const getConnectedUserdata = () => {
         const userData = localStorage.getItem("userData");
@@ -44,6 +45,7 @@ export default function PlanAction() {
             if (user?.level === "Medium level") {
                 data = await PlanActionService.getPlanActionMedium();
                 console.log('medium level')
+                setAddplanaction(true);
             } else {
                 data = await PlanActionService.getPlanActionAdmin();
                 console.log(data);
@@ -335,7 +337,7 @@ export default function PlanAction() {
         },
         {
             name: "Actions",
-            hidden:etat100,
+            hidden: etat100,
             cell: (row) => <ActionMenu options={getPlanActionOptions(row)} />,
         },
     ];
@@ -344,13 +346,15 @@ export default function PlanAction() {
         <>
             <PageMeta title="Plan d'action" description="gestion des plan d'actions" />
             <PageBreadcrumb pageTitle="Plan d'action" />
-            <button
-                onClick={() => navigate("/plan-action/add-plan-action")}
-                hidden={etat100}
-                className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
-            >
-                Ajouter un Plan d'action
-            </button>
+            <div hidden={addpalnaction} className="flex">
+                <button
+                    onClick={() => navigate("/plan-action/add-plan-action")}
+                    hidden={etat100}
+                    className="px-3 py-3 my-3 text-xs text-white bg-blue-500 rounded hover:bg-blue-700 hover:shadow-xl transition-shadow duration-200"
+                >
+                    Ajouter un Plan d'action
+                </button>
+            </div>
             <div className="grid grid-cols-1 gap-6 ">
                 <DynamicFilters filters={filters} onFilterChange={handleFilterChange} fields={filterFields} />
                 <DataTableLayout

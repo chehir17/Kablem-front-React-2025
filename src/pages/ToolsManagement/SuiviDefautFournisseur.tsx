@@ -25,6 +25,8 @@ export default function SuiviFournisseur() {
     const [type, setType] = useState('suivifournisseur');
     const { user: _user, etat100 } = useUserData();
 
+    console.log("etat100:", etat100);   
+
     useEffect(() => {
         const fetchData = async () => {
             try {
